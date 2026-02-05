@@ -2,13 +2,14 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { updateRequestStatus } from "@/app/actions/requests";
 import { formatDistanceToNow } from "date-fns";
-// 1. IMPORT PRISMA TYPES
-import { Request, User } from "@prisma/client";
 
-// Define an extended type to include the user relation
-type RequestWithUser = Request & {
-  user: User | null;
-};
+// 1. FIX: Import Prisma namespace to avoid naming collisions
+import { Prisma } from "@prisma/client";
+
+// 2. FIX: Use the official Payload helper for related data
+type RequestWithUser = Prisma.RequestGetPayload<{
+  include: { user: true };
+}>;
 
 export default async function AdminRequestManager() {
   // Fetch only pending requests
@@ -27,7 +28,7 @@ export default async function AdminRequestManager() {
         </Link>
         
         <div className="grid gap-4 mt-6">
-          {/* 2. ADD THE EXPLICIT TYPE TO THE MAP PARAMETER */}
+          {/* 3. The 'req' parameter is now explicitly typed for the build */}
           {requests.map((req: RequestWithUser) => {
             // Safe fallback for posterPath
             const posterUrl = req.posterPath 
