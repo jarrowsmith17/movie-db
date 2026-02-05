@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef } from 'react';
+import Link from 'next/link';
 
 const IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w200";
 
@@ -11,10 +12,8 @@ type Props = {
 export default function CastCarousel({ cast }: Props) {
   if (!cast || cast.length === 0) return null;
 
-  // 1. Add the scroll reference
   const rowRef = useRef<HTMLDivElement>(null);
 
-  // 2. Add the scroll logic
   const handleClick = (direction: 'left' | 'right') => {
     if (rowRef.current) {
       const { clientWidth, scrollLeft } = rowRef.current;
@@ -49,8 +48,13 @@ export default function CastCarousel({ cast }: Props) {
           className="flex overflow-x-scroll gap-4 pb-4 md:p-2 scroll-smooth snap-x [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
         >
           {cast.slice(0, 15).map((actor) => (
-            <div key={actor.id} className="min-w-[120px] w-[120px] snap-start flex flex-col text-center transition duration-200 ease-out md:hover:scale-105">
-              <div className="w-[100px] h-[100px] md:w-[120px] md:h-[120px] rounded-full overflow-hidden mb-2 border-2 border-gray-800 mx-auto bg-gray-800">
+            /* WRAPPED IN LINK COMPONENT */
+            <Link 
+              key={actor.id} 
+              href={`/person/${actor.id}`}
+              className="min-w-[120px] w-[120px] snap-start flex flex-col text-center transition duration-200 ease-out md:hover:scale-105 group/actor"
+            >
+              <div className="w-[100px] h-[100px] md:w-[120px] md:h-[120px] rounded-full overflow-hidden mb-2 border-2 border-gray-800 mx-auto bg-gray-800 group-hover/actor:border-yellow-500 transition-colors">
                 {actor.profile_path ? (
                   <img 
                     src={IMAGE_BASE_URL + actor.profile_path} 
@@ -63,9 +67,13 @@ export default function CastCarousel({ cast }: Props) {
                   </div>
                 )}
               </div>
-              <p className="text-white text-sm font-bold truncate">{actor.name}</p>
-              <p className="text-gray-400 text-xs truncate">{actor.character}</p>
-            </div>
+              <p className="text-white text-sm font-bold truncate group-hover/actor:text-yellow-500 transition-colors">
+                {actor.name}
+              </p>
+              <p className="text-gray-400 text-xs truncate">
+                {actor.character}
+              </p>
+            </Link>
           ))}
         </div>
 

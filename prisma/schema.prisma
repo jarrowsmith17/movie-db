@@ -1,0 +1,57 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+}
+
+// 3. Your Elite Media Models
+model User {
+  id            String      @id @default(cuid())
+  name          String?
+  username      String      @unique
+  password      String      
+  role          String      @default("user")
+  createdAt     DateTime    @default(now())
+  
+  watchlist     Watchlist[]
+  requests      Request[]
+  notifications Notification[] 
+}
+
+model Watchlist {
+  id        String   @id @default(cuid())
+  tmdbId    Int
+  type      String   
+  title     String
+  poster    String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([userId, tmdbId, type])
+}
+
+model Request {
+  id         String   @id @default(cuid())
+  title      String
+  posterPath String?  // Ensure this is here
+  tmdbId     Int
+  type       String   // MOVIE or TV
+  status     String   @default("PENDING")
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  createdAt  DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
