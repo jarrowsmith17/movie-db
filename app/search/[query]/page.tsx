@@ -1,5 +1,6 @@
 import Search from '@/components/Search';
 import Link from 'next/link';
+import Navbar from '@/components/Navbar';
 
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
 
@@ -95,28 +96,15 @@ export default async function SearchPage({ params }: Props) {
   const movies = await getSearchResults(query);
 
   return (
-    <main className="flex min-h-screen flex-col items-center p-4 md:p-10 bg-gray-100 dark:bg-gray-950 text-black dark:text-white transition-colors duration-300">
-        <div className="w-full max-w-7xl flex flex-col md:flex-row items-center md:justify-between mb-8 gap-4">
-        
-        <Link 
-          href="/" 
-          className="text-2xl font-bold text-gray-900 dark:text-white hover:text-yellow-500 transition-colors"
-        >
-          MovieLog
-        </Link>
-
-        {/* This container holds your Search Bar. 
-            We remove the margin-bottom (mb-8) from the search component itself 
-            so the gap-4 above handles the spacing. 
-        */}
-        <div className="w-full max-w-md">
-           <Search />
+    <main className="flex min-h-screen flex-col items-center p-4 md:p-10 bg-gray-950 dark:bg-gray-950 text-black dark:text-white transition-colors duration-300">
+        {/* Navbar */}
+        <div className="w-full mb-8">
+            <Navbar variant="default" />
         </div>
-        
-      </div>
+
         <div className="w-full max-w-7xl mb-10 text-center">
         
-        <h1 className="text-3xl md:text-4xl font-bold">
+        <h1 className="text-3xl md:text-4xl text-white font-bold">
           Results for <span className="text-yellow-500">"{query}"</span>
         </h1>
         <p className="mt-2 text-gray-500 dark:text-gray-400">

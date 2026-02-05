@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import Search from '@/components/Search';
+import Navbar from '@/components/Navbar';
 
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/original'; // "original" = Highest Quality
 
@@ -21,10 +23,15 @@ export default async function MoviePage({ params }: Props) {
   const movie = await getMovie(resolvedParams.id);
 
   return (
-    <div className="w-full min-h-screen bg-gray-950 text-white">
-      
+    <div className="w-full min-h-screen bg-gray-950 text-white">      
       {/* --- HERO SECTION (Backdrop Image) --- */}
       <div className="relative w-full h-[50vh] md:h-[70vh]">
+        
+        {/* Navbar */}
+        <div className="w-full z-50">
+            <Navbar variant="overlay" />
+        </div>
+        
         {/* The Background Image */}
         <div 
           className="absolute inset-0 bg-cover bg-center"
@@ -36,12 +43,7 @@ export default async function MoviePage({ params }: Props) {
 
         {/* The Content sitting on top of the image */}
         <div className="relative z-10 flex flex-col justify-end h-full p-8 max-w-7xl mx-auto">
-          
-          {/* Back Button */}
-          <Link href="/" className="absolute top-8 left-8 text-white/80 hover:text-yellow-500 transition">
-            ← Back to Home
-          </Link>
-
+    
           {/* Title & Date */}
           <h1 className="text-4xl md:text-6xl font-bold drop-shadow-lg">
             {movie.title}
