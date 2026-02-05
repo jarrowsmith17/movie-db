@@ -1,53 +1,71 @@
 'use client';
 
 import { useState } from 'react';
-import { submitRequest } from '@/app/actions/requests';
+import { useSession } from 'next-auth/react';
+import { submitRequest } from '@/app/actions/requests'; // Uses your Action
 
-type RequestButtonProps = {
+type Props = {
   tmdbId: string;
   title: string;
-  posterPath: string | null;
+  posterPath: string;
   type: 'MOVIE' | 'TV';
+  status?: string | null;
 };
 
-export default function RequestButton({ tmdbId, title, posterPath, type }: RequestButtonProps) {
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+export default function RequestButton({ tmdbId, title, posterPath, type, status: initialStatus }: Props) {
+  const { data: session } = useSession();
+  const [status, setStatus] = useState<string | null>(initialStatus || null);
+  const [loading, setLoading] = useState(false);
 
-  const handleRequest = async () => {
-    setStatus('loading');
-    try {
-      await submitRequest(tmdbId, title, posterPath, type);
-      setStatus('success');
-      // Reset after 3 seconds so they can see the success state
-      setTimeout(() => setStatus('idle'), 3000);
-    } catch (error) {
-      console.error(error);
-      setStatus('error');
-    }
-  };
-
-  if (status === 'success') {
+  // 1. FIX: Check for 'ADDED' (Matches your DB)
+  if (status === 'ADDED' || status === 'APPROVED') {
     return (
-      <button disabled className="bg-green-500/20 text-green-400 px-6 py-3 rounded-xl font-bold border border-green-500/50 flex items-center gap-2 transition-all">
-        <span>✅</span> Requested
+      <button disabled className="flex items-center gap-2 bg-green-500/10 text-green-400 border border-green-500/20 px-6 py-3 rounded-xl font-black uppercase tracking-widest text-xs cursor-default">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+        <span>Added to Library</span>
       </button>
     );
   }
 
+  // 2. REQUESTED (Blue)
+  if (status === 'PENDING') {
+    return (
+      <button disabled className="flex items-center gap-2 bg-blue-500/10 text-blue-400 border border-blue-500/20 px-6 py-3 rounded-xl font-black uppercase tracking-widest text-xs cursor-default">
+        <svg className="w-4 h-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+        <span>Requested</span>
+      </button>
+    );
+  }
+
+  // 3. HANDLE CLICK (Server Action)
+  const handleRequest = async () => {
+    if (!session) return; 
+    setLoading(true);
+    
+    try {
+      // Call the Server Action you provided
+      await submitRequest(tmdbId, title, posterPath, type);
+      setStatus('PENDING');
+    } catch (error) {
+      console.error('Request failed', error);
+      alert('Failed to submit request. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <button
+    <button 
       onClick={handleRequest}
-      disabled={status === 'loading'}
-      className="bg-yellow-600 hover:bg-yellow-500 disabled:bg-zinc-800 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-blue-900/20 active:scale-95 flex items-center gap-2"
+      disabled={loading}
+      className="bg-yellow-500 hover:bg-yellow-400 text-black px-8 py-3 rounded-xl font-black uppercase tracking-widest text-xs transition-transform active:scale-95 flex items-center gap-2 group"
     >
-      {status === 'loading' ? (
-        <>
-          <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-          Requesting...
-        </>
+      {loading ? (
+        <span>Processing...</span>
       ) : (
         <>
-          <span>📩</span> Request {type === 'MOVIE' ? 'Movie' : 'TV Show'}
+          <svg className="w-4 h-4 group-hover:rotate-90 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+          <span>Request</span>
         </>
       )}
     </button>

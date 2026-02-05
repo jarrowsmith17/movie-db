@@ -1,12 +1,14 @@
+import { prisma } from '@/lib/prisma'; // 1. Added Prisma Import
 import MediaHero from '@/components/MediaHero';
 import CastCarousel from '@/components/CastCarousel';
 import MovieCarousel from '@/components/MovieCarousel';
 import EpisodeCarousel from '@/components/EpisodeCarousel';
 import SeasonSelector from '@/components/SeasonSelector';
 
+// Fetch Logic
 const getShowDetails = async (id: string) => {
   const res = await fetch(
-    `https://api.themoviedb.org/3/tv/${id}?api_key=${process.env.TMDB_API_KEY}&language=en-GB&append_to_response=videos,credits,recommendations`,
+    `https://api.themoviedb.org/3/tv/${id}?api_key=${process.env.TMDB_API_KEY}&language=en-GB&append_to_response=videos,credits,recommendations,seasons`,
     { next: { revalidate: 3600 } }
   );
   if (!res.ok) throw new Error('Failed to fetch show');
@@ -30,8 +32,25 @@ type Props = {
 export default async function TVPage({ params, searchParams }: Props) {
   const resolvedParams = await params;
   const resolvedSearchParams = await searchParams;
+  
   const show = await getShowDetails(resolvedParams.id);
   
+  // 2. SAFE DATABASE CHECK
+  // We check if this TV show is already in the database to update the button status.
+  let existingRequest = null;
+  try {
+    existingRequest = await prisma.request.findFirst({
+      where: { 
+        tmdbId: Number(resolvedParams.id), // FIXED: Converted to Number for Prisma
+        type: 'TV' 
+      },
+      select: { status: true }
+    });
+  } catch (error) {
+    console.error("Database check failed:", error);
+  }
+
+  // Season Logic
   const seasonToFetch = resolvedSearchParams.season 
     ? parseInt(resolvedSearchParams.season) 
     : (show.seasons?.[0]?.season_number || 1);
@@ -45,8 +64,12 @@ export default async function TVPage({ params, searchParams }: Props) {
 
   return (
     <div className="w-full min-h-screen bg-gray-950 text-white pb-20">
-      {/* SHARED HERO COMPONENT */}
-      <MediaHero media={show} type="tv" />
+      {/* 3. PASS STATUS TO HERO */}
+      <MediaHero 
+        media={show} 
+        type="tv" 
+        requestStatus={existingRequest?.status} // Pass DB status here
+      />
 
       <div className="max-w-7xl mx-auto px-4 md:px-10 mt-12">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
@@ -67,17 +90,21 @@ export default async function TVPage({ params, searchParams }: Props) {
               </section>
             )}
 
-            {/* Episodes */}
-            <section>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-white">Episodes</h2>
-                <SeasonSelector seasons={show.seasons} tvId={show.id} />
-              </div>
-              {seasonData && <EpisodeCarousel key={seasonToFetch} episodes={seasonData.episodes} />}
-            </section>
+            {/* Episodes (With Guard Clause) */}
+            {show.seasons && show.seasons.length > 0 && (
+              <section>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold text-white">Episodes</h2>
+                  <SeasonSelector seasons={show.seasons} tvId={show.id} />
+                </div>
+                {seasonData && <EpisodeCarousel key={seasonToFetch} episodes={seasonData.episodes} />}
+              </section>
+            )}
 
             {/* Cast */}
-            <CastCarousel key={seasonToFetch} cast={castToDisplay} />
+            {castToDisplay && castToDisplay.length > 0 && (
+              <CastCarousel key={seasonToFetch} cast={castToDisplay} />
+            )}
           </div>
 
           {/* Sidebar */}
@@ -92,6 +119,10 @@ export default async function TVPage({ params, searchParams }: Props) {
                    <div>
                       <span className="block text-gray-500 text-xs uppercase">Network</span>
                       <span className="text-white">{show.networks?.[0]?.name}</span>
+                   </div>
+                   <div>
+                      <span className="block text-gray-500 text-xs uppercase">Type</span>
+                      <span className="text-white">{show.type}</span>
                    </div>
                 </div>
              </div>

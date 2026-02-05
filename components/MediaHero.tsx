@@ -2,16 +2,17 @@
 
 import Link from 'next/link';
 import Navbar from './Navbar';
-import RequestButton from './RequestButton'; // 1. Restored Import
+import RequestButton from './RequestButton';
 
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/original';
 
 type MediaHeroProps = {
   media: any;
   type: 'movie' | 'tv';
+  requestStatus?: string | null; // 1. New Prop to receive DB status
 };
 
-export default function MediaHero({ media, type }: MediaHeroProps) {
+export default function MediaHero({ media, type, requestStatus }: MediaHeroProps) {
   const getRatingColor = (rating: number) => {
     if (!rating) return 'text-gray-400 border-gray-400';
     if (rating >= 7) return 'text-green-400 border-green-400';
@@ -19,7 +20,6 @@ export default function MediaHero({ media, type }: MediaHeroProps) {
     return 'text-red-400 border-red-400';
   };
 
-  // Safe accessors
   const title = type === 'movie' ? media?.title : media?.name;
   const date = type === 'movie' ? media?.release_date : media?.first_air_date;
   const year = date ? date.split('-')[0] : 'TBA';
@@ -43,7 +43,6 @@ export default function MediaHero({ media, type }: MediaHeroProps) {
         <div className="pointer-events-none" />
 
         <div className="flex flex-col gap-4">
-          {/* 2. UPDATED FONT: Nolan Style (Black, Italic, Uppercase) */}
           <h1 className="text-3xl md:text-6xl font-black italic uppercase tracking-tighter drop-shadow-2xl leading-tight text-white">
             {title} 
             <span className="text-xl md:text-4xl text-gray-400 font-normal ml-3 block md:inline not-italic tracking-normal">
@@ -68,13 +67,14 @@ export default function MediaHero({ media, type }: MediaHeroProps) {
               ))}
             </div>
 
-            {/* 3. RESTORED REQUEST BUTTON */}
+            {/* 2. PASSING STATUS TO BUTTON */}
             <div className="ml-0 md:ml-4">
               <RequestButton 
                 tmdbId={media?.id?.toString() || ""}
                 title={title || ""}
                 posterPath={media?.poster_path || ""}
                 type={type === 'movie' ? 'MOVIE' : 'TV'}
+                status={requestStatus} // Pass it here
               />
             </div>
           </div>
@@ -86,10 +86,7 @@ export default function MediaHero({ media, type }: MediaHeroProps) {
               </p>
             )}
             
-            {/* 4. UPDATED FONT for Section Header */}
-            <h3 className="text-lg md:text-xl font-black uppercase italic tracking-tight mb-1 text-white">
-              Overview
-            </h3>
+            <h3 className="text-lg md:text-xl font-black uppercase italic tracking-tight mb-1 text-white mt-4">Overview</h3>
             <p className="text-gray-200 leading-relaxed text-sm md:text-lg line-clamp-3 md:line-clamp-none drop-shadow-md font-medium">
               {media?.overview || "No overview available."}
             </p>
