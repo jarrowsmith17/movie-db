@@ -6,15 +6,15 @@ import { useRef } from 'react';
 const IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500";
 
 type Props = {
-  movies: any[];
+  movies: any[]; // Now accepts Movies or TV Shows
   showFullDate?: boolean;
-  showRanking?: boolean; // ✅ New Prop to enable/disable ranking numbers
+  showRanking?: boolean;
 };
 
 export default function MovieCarousel({ 
   movies, 
   showFullDate = false, 
-  showRanking = false // ✅ Defaults to false so New Releases doesn't show it
+  showRanking = false 
 }: Props) {
   const rowRef = useRef<HTMLDivElement>(null);
 
@@ -52,57 +52,69 @@ export default function MovieCarousel({
       </button>
 
       {/* CAROUSEL CONTAINER */}
-      {/* Added the tricky scrollbar hiding classes back in */}
       <div 
         ref={rowRef}
         className="flex items-center space-x-2.5 overflow-x-scroll md:space-x-4 md:p-2 scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
       >
-        {/* ✅ Added 'index' here so we know the position */}
-        {movies.map((movie, index) => (
-          <Link 
-            href={`/movie/${movie.id}`} 
-            key={movie.id} 
-            className="min-w-[160px] md:min-w-[200px] cursor-pointer transition duration-200 ease-out md:hover:scale-105 group/card relative"
-          >
-            <div className="relative aspect-[2/3] w-full mb-2 overflow-hidden rounded-sm md:rounded">
-              
-              {/* ✅ THE RANKING BADGE */}
-              {/* Only shows if showRanking is true. Uses index + 1 for placement. */}
-              {showRanking && (
-                 <div className="absolute top-0 left-0 z-10 bg-gradient-to-br from-black/90 via-black/50 to-transparent px-3 py-1 rounded-br-2xl pointer-events-none">
-                     <span className="text-white font-extrabold text-3xl md:text-4xl drop-shadow-lg leading-none italic tracking-tighter font-outline-2">
-                        #{index + 1}
-                     </span>
-                 </div>
-              )}
+        {movies.map((item, index) => {
+          // 1. Determine if it's TV or Movie
+          const isTV = item.media_type === 'tv' || item.name;
+          const title = item.title || item.name; // TV uses 'name', Movies use 'title'
+          const date = item.release_date || item.first_air_date;
+          const linkHref = isTV ? `/tv/${item.id}` : `/movie/${item.id}`;
 
-              {movie.poster_path ? (
-                <img 
-                  src={IMAGE_BASE_URL + movie.poster_path}
-                  alt={movie.title}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full bg-gray-800 flex items-center justify-center text-gray-500 text-xs">
-                  No Image
-                </div>
-              )}
-            </div>
-            
-            <h2 className="text-sm font-bold truncate text-gray-200 group-hover/card:text-white">
-              {movie.title}
-            </h2>
-             
-            <div className="flex justify-between mt-1 text-xs text-gray-400">
-                <span className="text-yellow-500">★ {movie.vote_average.toFixed(1)}</span>
-                <span>
-                  {showFullDate 
-                    ? formatDate(movie.release_date) 
-                    : movie.release_date?.split('-')[0]}
-                </span>
-            </div>
-          </Link>
-        ))}
+          return (
+            <Link 
+              href={linkHref} 
+              key={item.id} 
+              className="min-w-[160px] md:min-w-[200px] cursor-pointer transition duration-200 ease-out md:hover:scale-105 group/card relative"
+            >
+              <div className="relative aspect-[2/3] w-full mb-2 overflow-hidden rounded-sm md:rounded">
+                
+                {/* RANKING BADGE */}
+                {showRanking && (
+                   <div className="absolute top-0 left-0 z-10 bg-gradient-to-br from-black/90 via-black/50 to-transparent px-3 py-1 rounded-br-2xl pointer-events-none">
+                       <span className="text-white font-extrabold text-3xl md:text-4xl drop-shadow-lg leading-none italic tracking-tighter font-outline-2">
+                          #{index + 1}
+                       </span>
+                   </div>
+                )}
+
+                {item.poster_path ? (
+                  <img 
+                    src={IMAGE_BASE_URL + item.poster_path}
+                    alt={title}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gray-800 flex items-center justify-center text-gray-500 text-xs">
+                    No Image
+                  </div>
+                )}
+              </div>
+              
+              <h2 className="text-sm font-bold truncate text-gray-200 group-hover/card:text-white">
+                {title}
+              </h2>
+               
+              <div className="flex justify-between items-center mt-1 text-xs text-gray-400">
+                  <div className="flex items-center gap-2">
+                    <span className="text-yellow-500">★ {item.vote_average?.toFixed(1)}</span>
+                    {/* ✅ TYPE INDICATOR (Small text next to rating) */}
+                    <span className="text-[10px] uppercase tracking-wider border border-gray-700 px-1 rounded text-gray-500">
+                      {isTV ? 'TV' : 'Film'}
+                    </span>
+                  </div>
+
+                  <span>
+                    {showFullDate 
+                      ? formatDate(date) 
+                      : date?.split('-')[0]}
+                  </span>
+              </div>
+            </Link>
+          );
+        })}
       </div>
 
       {/* RIGHT BUTTON */}
