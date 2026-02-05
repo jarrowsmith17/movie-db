@@ -3,20 +3,19 @@ import Link from "next/link";
 import { updateRequestStatus } from "@/app/actions/requests";
 import { formatDistanceToNow } from "date-fns";
 
-// 1. FIX: Import Prisma namespace to avoid naming collisions
+// 1. FIX: Import the Prisma namespace
 import { Prisma } from "@prisma/client";
 
-// 2. FIX: Use the official Payload helper for related data
+// 2. FIX: Use the official GetPayload helper to handle relations
 type RequestWithUser = Prisma.RequestGetPayload<{
   include: { user: true };
 }>;
 
 export default async function AdminRequestManager() {
-  // Fetch only pending requests
   const requests = await prisma.request.findMany({
     where: { status: "PENDING" },
     include: { user: true },
-    orderBy: { title: 'asc' } // Sorted Alphabetically A-Z
+    orderBy: { title: 'asc' }
   });
 
   return (
@@ -28,9 +27,8 @@ export default async function AdminRequestManager() {
         </Link>
         
         <div className="grid gap-4 mt-6">
-          {/* 3. The 'req' parameter is now explicitly typed for the build */}
+          {/* 3. The 'req' parameter now has a rock-solid type for the build */}
           {requests.map((req: RequestWithUser) => {
-            // Safe fallback for posterPath
             const posterUrl = req.posterPath 
               ? `https://image.tmdb.org/t/p/w185${req.posterPath}`
               : "https://via.placeholder.com/185x278?text=No+Poster";
