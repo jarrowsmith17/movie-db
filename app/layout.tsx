@@ -39,6 +39,8 @@ export default function RootLayout({
         <SessionWrapper>
           {children}
         </SessionWrapper>
+        <SpeedInsights />
+        <Analytics />
       </body>
     </html>
   );
