@@ -17,12 +17,23 @@ export async function submitRequest(mediaId: string, title: string, posterPath: 
     throw new Error("You must be logged in to request content.");
   }
 
-  // 1. Create Request
+const tmdbIdInt = parseInt(mediaId);
+
+  // 1. CLEAN SLATE: Remove any existing entries for this film/show
+  // This prevents 'REJECTED' statuses from interfering with future logic.
+  await prisma.request.deleteMany({
+    where: {
+      tmdbId: tmdbIdInt,
+      type: type,
+    }
+  });
+
+  // 2. Create New Request
   await prisma.request.create({
     data: {
       title,
       posterPath,
-      tmdbId: parseInt(mediaId), // Ensures it saves as Int
+      tmdbId: tmdbIdInt,
       type,
       status: "PENDING",
       userId: session.user.id,

@@ -35,8 +35,8 @@ export default function Navbar({ variant = 'default', unreadCount = 0 }: { varia
   };
 
   const navLinks = [
-    { name: 'Log', href: '/log' },
-    { name: 'Watchlist', href: '/watchlist' },
+    { name: 'Log - coming soon...', href: '/log' },
+    { name: 'Watchlist - coming soon...', href: '/watchlist' },
     { name: 'Requests', href: '/requests' },
     { name: 'Inbox', href: '/inbox' },
   ];
@@ -108,7 +108,7 @@ export default function Navbar({ variant = 'default', unreadCount = 0 }: { varia
             {/* 3. ADMIN PINNED TO BOTTOM */}
             <div className="mt-auto pt-6 border-t border-white/5">
               {isAdmin && (
-                <Link href="/admin" className="flex items-center gap-3 p-3 bg-blue-500/5 border border-blue-500/10 rounded-xl mb-6 hover:bg-blue-500/10 transition-all">
+                <Link href="/admin" className="flex items-center justify-center gap-3 p-3 bg-blue-500/5 border border-blue-500/10 rounded-xl mb-6 hover:bg-blue-500/10 transition-all">
                   <span className="text-[14px] font-black uppercase tracking-widest text-blue-500">Admin Dashboard</span>
                 </Link>
               )}
@@ -118,7 +118,7 @@ export default function Navbar({ variant = 'default', unreadCount = 0 }: { varia
                     <p className="text-gray-600 text-[8px] font-black uppercase tracking-widest">Active</p>
                     <p className="text-white text-s font-bold truncate max-w-[120px]">{session.user?.name}</p>
                   </div>
-                  <button onClick={() => signOut()} className="text-[14px] font-black text-red-500 uppercase hover:text-red-400 transition-colors">Sign Out</button>
+                  <button onClick={() => signOut()} className="text-[14px] font-black p-2 rounded-xl bg-red-700 text-gray-200 hover:text-red-400 hover:bg-red-600 uppercase transition-colors">Sign Out</button>
                 </div>
               ) : (
                 <Link href="/login" className="flex items-center justify-center bg-yellow-500 text-black p-3 rounded-xl font-black uppercase text-[16px] hover:bg-yellow-400 transition-all">Sign In</Link>

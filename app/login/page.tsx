@@ -28,7 +28,7 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-gray-900 border border-gray-800 p-8 rounded-2xl shadow-2xl">
-        <h1 className="text-3xl font-black text-yellow-500 uppercase tracking-tighter mb-2">Elite Access</h1>
+        <h1 className="text-3xl font-black text-yellow-500 uppercase tracking-tighter mb-2">Private Access</h1>
         <p className="text-gray-500 text-sm mb-8 font-medium italic">Private Media Server Gateway</p>
         
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -49,7 +49,7 @@ export default function LoginPage() {
             />
           </div>
           <button className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-black py-4 rounded-lg uppercase tracking-widest transition-all">
-            Enter Vault
+            Login
           </button>
         </form>
       </div>
