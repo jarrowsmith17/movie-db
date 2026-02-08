@@ -9,8 +9,8 @@ export default function DeleteLogButton({ logId }: { logId: string }) {
   const router = useRouter();
 
   const handleDelete = async (e: React.MouseEvent) => {
-    e.preventDefault(); // Prevent navigating to the movie page
-    e.stopPropagation(); // Stop event bubbling
+    e.preventDefault(); 
+    e.stopPropagation(); 
 
     if (!confirm("Are you sure you want to remove this log?")) return;
 
@@ -30,7 +30,10 @@ export default function DeleteLogButton({ logId }: { logId: string }) {
     <button
       onClick={handleDelete}
       disabled={loading}
-      className="absolute top-2 left-2 z-20 flex items-center justify-center w-8 h-8 bg-red-600/80 hover:bg-red-600 text-white rounded-full backdrop-blur-md transition-all opacity-0 group-hover:opacity-100 shadow-lg disabled:opacity-50"
+      // CHANGED: Removed 'opacity-0' and added responsive logic
+      // Mobile: Always visible (opacity-100)
+      // Desktop (md): Hidden by default (md:opacity-0), visible on hover (md:group-hover:opacity-100)
+      className="absolute top-2 left-2 z-20 flex items-center justify-center w-8 h-8 bg-red-600/80 hover:bg-red-600 text-white rounded-full backdrop-blur-md transition-all shadow-lg disabled:opacity-50 opacity-100 md:opacity-0 md:group-hover:opacity-100"
       title="Remove from history"
     >
       {loading ? (

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Navbar from './Navbar';
 import RequestButton from './RequestButton';
 import WatchlistButton from './WatchlistButton';
-import ReviewButton from './ReviewButton'; // New Import
+import ReviewButton from './ReviewButton';
 import { useSession } from 'next-auth/react';
 
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/original';
@@ -14,7 +14,6 @@ type MediaHeroProps = {
   type: 'movie' | 'tv';
   requestStatus?: string | null;
   isInWatchlist?: boolean;
-  // New Prop
   userReview?: {
      rating: number;
      content: string | null;
@@ -26,7 +25,7 @@ export default function MediaHero({
   type, 
   requestStatus, 
   isInWatchlist = false, 
-  userReview // Destructure new prop
+  userReview 
 }: MediaHeroProps) {
   const { data: session } = useSession();
 
@@ -59,34 +58,34 @@ export default function MediaHero({
       <div className="relative z-10 grid grid-rows-[1fr_auto] h-full max-w-7xl mx-auto px-4 md:px-10 pb-12">
         <div className="pointer-events-none" />
 
-        <div className="flex flex-col gap-4">
-          <h1 className="text-3xl md:text-6xl font-black italic uppercase tracking-tighter drop-shadow-2xl leading-tight text-white">
+        <div className="flex flex-col gap-4 max-w-full">
+          <h1 className="text-3xl md:text-6xl font-black italic uppercase tracking-tighter drop-shadow-2xl leading-tight text-white break-words">
             {title} 
-            <span className="text-xl md:text-4xl text-gray-400 font-normal ml-3 block md:inline not-italic tracking-normal">
+            <span className="text-xl md:text-4xl text-gray-400 font-normal ml-0 md:ml-3 block md:inline not-italic tracking-normal">
               ({year})
             </span>
           </h1>
 
-          <div className="flex flex-wrap items-center gap-6">
+          <div className="flex flex-wrap items-center gap-4 md:gap-6">
             <div className={`flex items-center justify-center w-10 h-10 md:w-12 md:h-12 rounded-full border-4 font-bold bg-black/60 backdrop-blur-md ${getRatingColor(media?.vote_average)}`}>
               {media?.vote_average?.toFixed(1) || '0.0'}
             </div>
             
-            <span className="text-gray-300 text-sm font-black uppercase tracking-widest italic">
+            <span className="text-gray-300 text-sm font-black uppercase tracking-widest italic whitespace-nowrap">
               {type === 'movie' ? `${media?.runtime || 0} min` : `${media?.number_of_seasons || 0} Seasons`}
             </span>
 
             <div className="flex gap-2 flex-wrap">
               {media?.genres?.map((g: any) => (
-                <span key={g.id} className="border border-white/20 bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded text-[10px] md:text-xs text-gray-200 uppercase font-bold tracking-tight">
+                <span key={g.id} className="border border-white/20 bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded text-[10px] md:text-xs text-gray-200 uppercase font-bold tracking-tight whitespace-nowrap">
                   {g.name}
                 </span>
               ))}
             </div>
 
-            {/* ACTION BUTTONS */}
+            {/* ACTION BUTTONS: Added flex-wrap to prevent overflow */}
             {session && (
-              <div className="ml-0 md:ml-4 flex items-center gap-4">
+              <div className="w-full md:w-auto flex flex-wrap items-center gap-3 mt-4 md:mt-0 md:ml-4">
                  <WatchlistButton 
                     tmdbId={media?.id}
                     title={title}
@@ -95,15 +94,14 @@ export default function MediaHero({
                     initialState={isInWatchlist}
                  />
                  
-                 {/* New Review Button */}
                  <ReviewButton 
                     tmdbId={media?.id}
                     title={title}
-                    posterPath={media?.poster_path}  // <--- CRITICAL: Must be media.poster_path (from TMDB)
+                    posterPath={media?.poster_path}
                     type={type === 'movie' ? 'MOVIE' : 'TV'}
                     initialRating={userReview?.rating}
                     initialReview={userReview?.content}
-                  />
+                 />
 
                  <RequestButton 
                     tmdbId={media?.id?.toString() || ""}
@@ -118,7 +116,7 @@ export default function MediaHero({
 
           <div className="max-w-3xl">
             {media?.tagline && (
-              <p className="text-yellow-500 italic text-sm md:text-lg mb-2 drop-shadow-md border-l-2 border-yellow-500 pl-3">
+              <p className="text-yellow-500 italic text-sm md:text-lg mb-2 drop-shadow-md border-l-2 border-yellow-500 pl-3 break-words">
                 "{media.tagline}"
               </p>
             )}

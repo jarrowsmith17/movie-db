@@ -40,6 +40,7 @@ export default function Navbar({ variant = 'default', unreadCount = 0 }: { varia
     { name: 'Watchlist', href: '/watchlist', protected: true },
     { name: 'Requests', href: '/requests', protected: true },
     { name: 'Inbox', href: '/inbox', protected: true },
+    { name: "FAQ", href: '/faq', protected: false },
   ];
 
   // 2. FILTER LINKS BASED ON SESSION
