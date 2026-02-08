@@ -36,7 +36,7 @@ export default function Navbar({ variant = 'default', unreadCount = 0 }: { varia
 
   // 1. DEFINE LINKS (Some are protected)
   const allLinks = [
-    { name: 'Log - coming soon...', href: '/log', protected: true },
+    { name: 'Log', href: '/log', protected: true },
     { name: 'Watchlist', href: '/watchlist', protected: true },
     { name: 'Requests', href: '/requests', protected: true },
     { name: 'Inbox', href: '/inbox', protected: true },

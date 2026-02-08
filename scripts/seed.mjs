@@ -22,7 +22,7 @@ async function main() {
     create: {
       username: 'admin',
       password: hashedPassword,
-      name: 'Jacob',
+      name: 'Admin User',
       role: 'admin',
     },
   });

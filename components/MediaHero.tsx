@@ -3,8 +3,9 @@
 import Link from 'next/link';
 import Navbar from './Navbar';
 import RequestButton from './RequestButton';
-import WatchlistButton from './WatchlistButton'; // Import the new component
-import { useSession } from 'next-auth/react'; // Import session hook
+import WatchlistButton from './WatchlistButton';
+import ReviewButton from './ReviewButton'; // New Import
+import { useSession } from 'next-auth/react';
 
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/original';
 
@@ -12,11 +13,22 @@ type MediaHeroProps = {
   media: any;
   type: 'movie' | 'tv';
   requestStatus?: string | null;
-  isInWatchlist?: boolean; // New Prop
+  isInWatchlist?: boolean;
+  // New Prop
+  userReview?: {
+     rating: number;
+     content: string | null;
+  } | null;
 };
 
-export default function MediaHero({ media, type, requestStatus, isInWatchlist = false }: MediaHeroProps) {
-  const { data: session } = useSession(); // Check login status
+export default function MediaHero({ 
+  media, 
+  type, 
+  requestStatus, 
+  isInWatchlist = false, 
+  userReview // Destructure new prop
+}: MediaHeroProps) {
+  const { data: session } = useSession();
 
   const getRatingColor = (rating: number) => {
     if (!rating) return 'text-gray-400 border-gray-400';
@@ -72,7 +84,7 @@ export default function MediaHero({ media, type, requestStatus, isInWatchlist = 
               ))}
             </div>
 
-            {/* ONLY RENDER IF LOGGED IN */}
+            {/* ACTION BUTTONS */}
             {session && (
               <div className="ml-0 md:ml-4 flex items-center gap-4">
                  <WatchlistButton 
@@ -82,6 +94,17 @@ export default function MediaHero({ media, type, requestStatus, isInWatchlist = 
                     type={type === 'movie' ? 'MOVIE' : 'TV'}
                     initialState={isInWatchlist}
                  />
+                 
+                 {/* New Review Button */}
+                 <ReviewButton 
+                    tmdbId={media?.id}
+                    title={title}
+                    posterPath={media?.poster_path}  // <--- CRITICAL: Must be media.poster_path (from TMDB)
+                    type={type === 'movie' ? 'MOVIE' : 'TV'}
+                    initialRating={userReview?.rating}
+                    initialReview={userReview?.content}
+                  />
+
                  <RequestButton 
                     tmdbId={media?.id?.toString() || ""}
                     title={title || ""}

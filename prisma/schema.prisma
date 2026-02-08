@@ -20,6 +20,8 @@ model User {
   watchlist     Watchlist[]
   requests      Request[]
   notifications Notification[] 
+  watchLogs     WatchLog[]
+  reviews       Review[]
 }
 
 model Watchlist {
@@ -54,4 +56,31 @@ model Notification {
   message   String
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
+}
+
+model WatchLog {
+  id        String   @id @default(cuid())
+  userId    String
+  tmdbId    Int
+  type      String   // "MOVIE" or "TV" to match your existing pattern
+  title      String   // <-- Add this
+  posterPath String?
+  watchedAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+// 3. Add the Review model (For ratings and text)
+model Review {
+  id        String   @id @default(cuid())
+  userId    String
+  tmdbId    Int
+  type      String   // "MOVIE" or "TV"
+  rating    Int      // Stores the 1-5 star rating
+  content   String?  @db.Text // Optional: allows a rating without text, or long reviews
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt // Automatically updates when the review is "overwritten"
+
+  user      User     @relation(fields: [userId], references: [id])
+  @@unique([userId, tmdbId, type])
 }

@@ -2,10 +2,10 @@ import { prisma } from '@/lib/prisma';
 import MediaHero from '@/components/MediaHero';
 import CastCarousel from '@/components/CastCarousel';
 import MovieCarousel from '@/components/MovieCarousel';
+import ReviewList from '@/components/ReviewList'; // New Import
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
-// 1. UPDATE FETCH URL: Added 'watch/providers'
 const getMovie = async (id: string) => {
   const res = await fetch(
     `https://api.themoviedb.org/3/movie/${id}?api_key=${process.env.TMDB_API_KEY}&language=en-GB&append_to_response=videos,credits,recommendations,release_dates,watch/providers`,
@@ -27,6 +27,7 @@ export default async function MoviePage({ params }: Props) {
   // SAFE DATABASE CHECK
   let existingRequest = null;
   let isInWatchlist = false;
+  let userReview = null;
 
   try {
     existingRequest = await prisma.request.findFirst({
@@ -39,6 +40,7 @@ export default async function MoviePage({ params }: Props) {
     });
 
     if (session?.user?.id) {
+       // Check Watchlist
        const watchlistEntry = await prisma.watchlist.findUnique({
           where: {
              userId_tmdbId_type: {
@@ -49,11 +51,35 @@ export default async function MoviePage({ params }: Props) {
           }
        });
        isInWatchlist = !!watchlistEntry;
+
+       // Check User Review
+       userReview = await prisma.review.findUnique({
+          where: {
+             userId_tmdbId_type: {
+                userId: session.user.id,
+                tmdbId: Number(resolvedParams.id),
+                type: 'MOVIE'
+             }
+          },
+          select: { rating: true, content: true }
+       });
     }
 
   } catch (error) {
     console.error("Database connection failed:", error);
   }
+
+  // Fetch ALL reviews for this movie
+  const allReviews = await prisma.review.findMany({
+     where: {
+        tmdbId: Number(resolvedParams.id),
+        type: 'MOVIE'
+     },
+     include: {
+        user: { select: { username: true, name: true } }
+     },
+     orderBy: { createdAt: 'desc' }
+  });
 
   // --- UK DATES LOGIC ---
   const ukReleases = movie.release_dates?.results.find((r: any) => r.iso_3166_1 === 'GB');
@@ -86,6 +112,7 @@ export default async function MoviePage({ params }: Props) {
         type="movie" 
         requestStatus={existingRequest?.status} 
         isInWatchlist={isInWatchlist} 
+        userReview={userReview} // Pass the review data
       />
       
       <div className="max-w-7xl mx-auto px-4 md:px-10 mt-12">
@@ -119,7 +146,6 @@ export default async function MoviePage({ params }: Props) {
                      <span className="text-white">{digitalDate}</span>
                    </div>
 
-                   {/* --- STREAMING SECTION --- */}
                    <div>
                      <span className="block text-gray-500 text-xs uppercase">Streaming (UK)</span>
                      <span className="text-white text-sm leading-relaxed">{streamingList}</span>
@@ -128,6 +154,10 @@ export default async function MoviePage({ params }: Props) {
              </div>
           </div>
         </div>
+
+        {/* Display Reviews */}
+        <ReviewList reviews={allReviews} />
+
         {movie.recommendations?.results.length > 0 && (
           <section className="mt-16">
             <h2 className="text-2xl font-bold text-white mb-6">Related Movies</h2>

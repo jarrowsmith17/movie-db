@@ -4,6 +4,7 @@ import CastCarousel from '@/components/CastCarousel';
 import MovieCarousel from '@/components/MovieCarousel';
 import EpisodeCarousel from '@/components/EpisodeCarousel';
 import SeasonSelector from '@/components/SeasonSelector';
+import ReviewList from '@/components/ReviewList'; // 1. Import ReviewList
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
@@ -41,6 +42,7 @@ export default async function TVPage({ params, searchParams }: Props) {
   // SAFE DATABASE CHECK
   let existingRequest = null;
   let isInWatchlist = false;
+  let userReview = null; // 2. Initialize userReview
 
   try {
     existingRequest = await prisma.request.findFirst({
@@ -53,6 +55,7 @@ export default async function TVPage({ params, searchParams }: Props) {
     });
 
     if (session?.user?.id) {
+       // Check Watchlist
        const watchlistEntry = await prisma.watchlist.findUnique({
           where: {
              userId_tmdbId_type: {
@@ -63,10 +66,34 @@ export default async function TVPage({ params, searchParams }: Props) {
           }
        });
        isInWatchlist = !!watchlistEntry;
+
+       // 3. Fetch User Review (for the button state)
+       userReview = await prisma.review.findUnique({
+          where: {
+             userId_tmdbId_type: {
+                userId: session.user.id,
+                tmdbId: Number(resolvedParams.id),
+                type: 'TV'
+             }
+          },
+          select: { rating: true, content: true }
+       });
     }
   } catch (error) {
     console.error("Database check failed:", error);
   }
+
+  // 4. Fetch All Reviews (for the list)
+  const allReviews = await prisma.review.findMany({
+     where: {
+        tmdbId: Number(resolvedParams.id),
+        type: 'TV'
+     },
+     include: {
+        user: { select: { username: true, name: true } }
+     },
+     orderBy: { createdAt: 'desc' }
+  });
 
   // --- DATES ---
   const firstAired = show.first_air_date 
@@ -102,6 +129,7 @@ export default async function TVPage({ params, searchParams }: Props) {
         type="tv" 
         requestStatus={existingRequest?.status} 
         isInWatchlist={isInWatchlist} 
+        userReview={userReview} // 5. Pass review to Hero
       />
 
       <div className="max-w-7xl mx-auto px-4 md:px-10 mt-12">
@@ -175,6 +203,9 @@ export default async function TVPage({ params, searchParams }: Props) {
              </div>
           </div>
         </div>
+
+        {/* 6. Display the Review List */}
+        <ReviewList reviews={allReviews} />
 
         {show.recommendations?.results.length > 0 && (
           <section className="mt-16">
