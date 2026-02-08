@@ -5,9 +5,10 @@ import MovieCarousel from '@/components/MovieCarousel';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
+// 1. UPDATE FETCH URL: Include 'release_dates'
 const getMovie = async (id: string) => {
   const res = await fetch(
-    `https://api.themoviedb.org/3/movie/${id}?api_key=${process.env.TMDB_API_KEY}&language=en-GB&append_to_response=videos,credits,recommendations`,
+    `https://api.themoviedb.org/3/movie/${id}?api_key=${process.env.TMDB_API_KEY}&language=en-GB&append_to_response=videos,credits,recommendations,release_dates`,
     { next: { revalidate: 3600 } }
   );
   if (!res.ok) throw new Error('Failed to fetch movie');
@@ -29,7 +30,6 @@ export default async function MoviePage({ params }: Props) {
 
   try {
     // 1. Check Request Status (Latest)
-    // CHANGED: Added orderBy to get the most recent request
     existingRequest = await prisma.request.findFirst({
       where: { 
         tmdbId: Number(resolvedParams.id), 
@@ -56,6 +56,13 @@ export default async function MoviePage({ params }: Props) {
   } catch (error) {
     console.error("Database connection failed:", error);
   }
+
+  // 2. EXTRACT UK DIGITAL DATE LOGIC
+  const ukReleases = movie.release_dates?.results.find((r: any) => r.iso_3166_1 === 'GB');
+  const digitalRelease = ukReleases?.release_dates.find((d: any) => d.type === 4);
+  const digitalDate = digitalRelease?.release_date 
+    ? new Date(digitalRelease.release_date).toLocaleDateString('en-GB') 
+    : 'TBA';
 
   const trailer = movie.videos?.results.find(
     (vid: any) => vid.type === 'Trailer' && vid.site === 'YouTube'
@@ -90,6 +97,12 @@ export default async function MoviePage({ params }: Props) {
                    <div><span className="block text-gray-500 text-xs uppercase">Status</span><span className="text-white">{movie.status}</span></div>
                    <div><span className="block text-gray-500 text-xs uppercase">Budget</span><span className="text-white">{movie.budget > 0 ? `$${movie.budget.toLocaleString()}` : '-'}</span></div>
                    <div><span className="block text-gray-500 text-xs uppercase">Revenue</span><span className="text-white">{movie.revenue > 0 ? `$${movie.revenue.toLocaleString()}` : '-'}</span></div>
+                   
+                   {/* 3. DISPLAY DIGITAL RELEASE DATE */}
+                   <div>
+                     <span className="block text-gray-500 text-xs uppercase">Digital Release (UK)</span>
+                     <span className="text-white">{digitalDate}</span>
+                   </div>
                 </div>
              </div>
           </div>
