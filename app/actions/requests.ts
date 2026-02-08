@@ -1,4 +1,3 @@
-// app/actions/requests.ts
 "use server";
 
 import { prisma } from "@/lib/prisma";
@@ -6,7 +5,6 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { revalidatePath } from "next/cache";
 import { Resend } from 'resend';
-
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -17,18 +15,12 @@ export async function submitRequest(mediaId: string, title: string, posterPath: 
     throw new Error("You must be logged in to request content.");
   }
 
-const tmdbIdInt = parseInt(mediaId);
+  const tmdbIdInt = parseInt(mediaId);
 
-  // 1. CLEAN SLATE: Remove any existing entries for this film/show
-  // This prevents 'REJECTED' statuses from interfering with future logic.
-  await prisma.request.deleteMany({
-    where: {
-      tmdbId: tmdbIdInt,
-      type: type,
-    }
-  });
+  // CHANGED: Removed the 'deleteMany' block here. 
+  // We now keep the history of rejected/past requests.
 
-  // 2. Create New Request
+  // 1. Create New Request
   await prisma.request.create({
     data: {
       title,
@@ -40,13 +32,13 @@ const tmdbIdInt = parseInt(mediaId);
     }
   });
 
-  // 2. Send Email (Your Resend Code)
+  // 2. Send Email
   if (process.env.RESEND_API_KEY) {
     try {
       const user = session.user as any; 
       
       await resend.emails.send({
-        from: 'Movie-DB <onboarding@resend.dev>', // Or your domain
+        from: 'Movie-DB <onboarding@resend.dev>',
         to: 'jacob.arrowsmith17@gmail.com', 
         subject: `New Request: ${title}`,
         html: `
@@ -79,7 +71,6 @@ const tmdbIdInt = parseInt(mediaId);
 export async function updateRequestStatus(requestId: string, newStatus: "ADDED" | "REJECTED") {
   const session = await getServerSession(authOptions);
   
-  // Admin Check
   if (session?.user?.role !== "admin" && session?.user?.role !== "ADMIN") {
       throw new Error("Unauthorized");
   }
@@ -90,7 +81,6 @@ export async function updateRequestStatus(requestId: string, newStatus: "ADDED" 
     include: { user: true }
   });
 
-  // Notification for User
   await prisma.notification.create({
     data: {
       userId: request.userId,

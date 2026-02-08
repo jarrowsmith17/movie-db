@@ -2,8 +2,9 @@ import { prisma } from '@/lib/prisma';
 import MediaHero from '@/components/MediaHero';
 import CastCarousel from '@/components/CastCarousel';
 import MovieCarousel from '@/components/MovieCarousel';
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
-// ... getMovie function stays the same ...
 const getMovie = async (id: string) => {
   const res = await fetch(
     `https://api.themoviedb.org/3/movie/${id}?api_key=${process.env.TMDB_API_KEY}&language=en-GB&append_to_response=videos,credits,recommendations`,
@@ -20,17 +21,38 @@ type Props = {
 export default async function MoviePage({ params }: Props) {
   const resolvedParams = await params;
   const movie = await getMovie(resolvedParams.id);
+  const session = await getServerSession(authOptions);
 
   // SAFE DATABASE CHECK
   let existingRequest = null;
+  let isInWatchlist = false;
+
   try {
+    // 1. Check Request Status (Latest)
+    // CHANGED: Added orderBy to get the most recent request
     existingRequest = await prisma.request.findFirst({
       where: { 
-        tmdbId: Number(resolvedParams.id), // FIXED: Convert to Number
+        tmdbId: Number(resolvedParams.id), 
         type: 'MOVIE' 
       },
+      orderBy: { createdAt: 'desc' }, // GET LATEST
       select: { status: true }
     });
+
+    // 2. Check Watchlist Status (Only if logged in)
+    if (session?.user?.id) {
+       const watchlistEntry = await prisma.watchlist.findUnique({
+          where: {
+             userId_tmdbId_type: {
+                userId: session.user.id,
+                tmdbId: Number(resolvedParams.id),
+                type: 'MOVIE'
+             }
+          }
+       });
+       isInWatchlist = !!watchlistEntry;
+    }
+
   } catch (error) {
     console.error("Database connection failed:", error);
   }
@@ -45,8 +67,9 @@ export default async function MoviePage({ params }: Props) {
         media={movie} 
         type="movie" 
         requestStatus={existingRequest?.status} 
+        isInWatchlist={isInWatchlist} 
       />
-      {/* ... rest of your JSX ... */}
+      
       <div className="max-w-7xl mx-auto px-4 md:px-10 mt-12">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
           <div className="md:col-span-2 space-y-12">

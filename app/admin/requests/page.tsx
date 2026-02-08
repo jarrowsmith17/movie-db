@@ -5,6 +5,8 @@ import { formatDistanceToNow } from "date-fns";
 import Navbar from "@/components/Navbar";
 import Link from "next/link";
 
+export const dynamic = 'force-dynamic';
+
 type RequestWithUser = Prisma.RequestGetPayload<{
   include: { user: true };
 }>;

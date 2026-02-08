@@ -2,6 +2,8 @@ import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import MovieCarousel from '@/components/MovieCarousel';
 
+export const dynamic = 'force-dynamic';
+
 // 1. Fetch Trending (Mixed: Movies + TV)
 const getTrending = async (filter: string) => {
   const timeWindow = filter === 'week' ? 'week' : 'day';

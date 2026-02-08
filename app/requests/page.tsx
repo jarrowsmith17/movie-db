@@ -1,96 +1,70 @@
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { redirect } from "next/navigation"; // Import redirect
 import Navbar from "@/components/Navbar";
-import { formatDistanceToNow } from "date-fns";
 
-export default async function UserRequestsPage() {
+export default async function RequestsPage() {
   const session = await getServerSession(authOptions);
-  
-  // Fetch user's requests
-  const myRequests = await prisma.request.findMany({
-    where: { userId: session?.user?.id },
-    orderBy: { createdAt: 'desc' }
+
+  // 1. SECURITY CHECK: Redirect if not logged in
+  if (!session) {
+    redirect("/login");
+  }
+
+  // Fetch requests for this specific user
+  const requests = await prisma.request.findMany({
+    where: { userId: session.user.id }, // Only their requests
+    orderBy: { createdAt: 'desc' },
   });
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
-      {/* 1. Integrated Navbar */}
+    <div className="min-h-screen bg-gray-950 text-white pb-20">
       <Navbar />
+      
+      <div className="max-w-7xl mx-auto px-4 md:px-10 mt-10">
+        <h1 className="text-3xl md:text-4xl font-black italic uppercase tracking-tighter mb-8 border-l-4 border-yellow-500 pl-6">
+          Your Requests
+        </h1>
 
-      <main className="max-w-4xl mx-auto px-6 py-16">
-        {/* 2. Clean Title Header */}
-        <header className="mb-12">
-          <h1 className="text-4xl font-black tracking-tighter">Your Requests</h1>
-          <p className="text-zinc-500 mt-2 font-medium">
-            View the status of movies and shows you've suggested to the community.
-          </p>
-        </header>
-
-        {/* 3. The "Elite" List */}
-        <div className="space-y-4">
-          {myRequests.map((req) => (
-            <div 
-              key={req.id} 
-              className="group flex items-center gap-6 p-4 bg-zinc-900/40 border border-zinc-800 rounded-2xl hover:bg-zinc-900/80 hover:border-zinc-700 transition-all duration-300"
-            >
-              {/* Small Poster Preview */}
-              <div className="relative w-16 h-24 flex-shrink-0 overflow-hidden rounded-lg shadow-xl">
-                <img 
-                  src={req.posterPath ? `https://image.tmdb.org/t/p/w185${req.posterPath}` : "/placeholder.png"} 
-                  className="object-cover w-full h-full" 
-                  alt="" 
-                />
-              </div>
-
-              {/* Request Details */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">
-                    {req.type}
-                  </span>
-                  <span className="text-zinc-600 text-[10px] font-bold">
-                    {formatDistanceToNow(new Date(req.createdAt))} ago
-                  </span>
+        {requests.length === 0 ? (
+          <div className="text-center py-20 text-gray-500">
+            <p className="text-xl font-medium">You haven't made any requests yet.</p>
+            <p className="text-sm mt-2">Find a movie or TV show to get started.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {requests.map((request) => (
+              <div key={request.id} className="bg-gray-900 border border-gray-800 p-4 rounded-xl flex gap-4">
+                {request.posterPath ? (
+                   <img 
+                     src={`https://image.tmdb.org/t/p/w200${request.posterPath}`} 
+                     alt={request.title}
+                     className="w-20 h-30 object-cover rounded-lg"
+                   />
+                ) : (
+                   <div className="w-20 h-30 bg-gray-800 rounded-lg flex items-center justify-center text-xs text-gray-500">No Image</div>
+                )}
+                
+                <div className="flex-1">
+                  <h3 className="font-bold text-lg leading-tight">{request.title}</h3>
+                  <p className="text-xs text-gray-400 uppercase font-bold tracking-wider mt-1">{request.type}</p>
+                  
+                  <div className="mt-4">
+                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                      request.status === 'ADDED' ? 'bg-green-500/20 text-green-400 border border-green-500/20' :
+                      request.status === 'REJECTED' ? 'bg-red-500/20 text-red-400 border border-red-500/20' :
+                      'bg-blue-500/20 text-blue-400 border border-blue-500/20'
+                    }`}>
+                      {request.status}
+                    </span>
+                  </div>
                 </div>
-                <h3 className="text-lg font-bold truncate group-hover:text-blue-400 transition-colors">
-                  {req.title}
-                </h3>
               </div>
-
-              {/* Status Indicator */}
-              <div className="pr-2">
-                <StatusBadge status={req.status} />
-              </div>
-            </div>
-          ))}
-
-          {myRequests.length === 0 && (
-            <div className="text-center py-24 border-2 border-dashed border-zinc-900 rounded-3xl">
-              <div className="text-4xl mb-4">📩</div>
-              <p className="text-zinc-500 italic font-medium">You haven't made any requests yet.</p>
-            </div>
-          )}
-        </div>
-      </main>
-    </div>
-  );
-}
-
-/**
- * Modern Status Badge with dynamic colors
- */
-function StatusBadge({ status }: { status: string }) {
-  const variants: any = {
-    PENDING: "text-yellow-500 bg-yellow-500/10 border-yellow-500/20",
-    ADDED: "text-green-500 bg-green-500/10 border-green-500/20",
-    REJECTED: "text-red-500 bg-red-500/10 border-red-500/20",
-  };
-
-  return (
-    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border font-black text-[10px] uppercase tracking-widest ${variants[status] || variants.PENDING}`}>
-      <div className={`w-1.5 h-1.5 rounded-full animate-pulse bg-current`} />
-      {status}
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

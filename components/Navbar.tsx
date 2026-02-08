@@ -34,27 +34,32 @@ export default function Navbar({ variant = 'default', unreadCount = 0 }: { varia
     ]
   };
 
-  const navLinks = [
-    { name: 'Log - coming soon...', href: '/log' },
-    { name: 'Watchlist - coming soon...', href: '/watchlist' },
-    { name: 'Requests', href: '/requests' },
-    { name: 'Inbox', href: '/inbox' },
+  // 1. DEFINE LINKS (Some are protected)
+  const allLinks = [
+    { name: 'Log - coming soon...', href: '/log', protected: true },
+    { name: 'Watchlist', href: '/watchlist', protected: true },
+    { name: 'Requests', href: '/requests', protected: true },
+    { name: 'Inbox', href: '/inbox', protected: true },
   ];
+
+  // 2. FILTER LINKS BASED ON SESSION
+  const visibleLinks = allLinks.filter(link => 
+    !link.protected || (link.protected && session)
+  );
 
   return (
     <>
-      {/* 1. CENTERED LOGO LAYOUT */}
       <nav className={`${variant === 'overlay' ? 'absolute top-0 w-full' : 'w-full'} z-[100] px-6 py-6 grid grid-cols-3 items-center`}>
         <div className="flex justify-start">
           <button onClick={() => setIsMenuOpen(true)} className="text-white hover:text-yellow-500 transition-colors relative">
             <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16m-7 6h7" />
             </svg>
-            {unreadCount > 0 && <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-blue-500 rounded-full border-2 border-black animate-pulse" />}
+            {/* Show dot only if logged in AND has unread items */}
+            {session && unreadCount > 0 && <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-blue-500 rounded-full border-2 border-black animate-pulse" />}
           </button>
         </div>
 
-        {/* CENTERED LOGO */}
         <Link href="/" className="text-2xl font-black text-yellow-500 uppercase italic tracking-tighter text-center">
           Movie-DB
         </Link>
@@ -77,7 +82,6 @@ export default function Navbar({ variant = 'default', unreadCount = 0 }: { varia
 
             <div className="mt-10 mb-8"><Search /></div>
 
-            {/* 2. SUB-MENUS: NORMAL FONT & SMALLER */}
             <div className="flex flex-col gap-5 overflow-y-auto no-scrollbar pb-10">
               {['films', 'tv'].map((key) => (
                 <div key={key} className="flex flex-col">
@@ -98,14 +102,14 @@ export default function Navbar({ variant = 'default', unreadCount = 0 }: { varia
                 </div>
               ))}
 
-              {navLinks.map(l => (
+              {/* 3. MAP OVER FILTERED LINKS */}
+              {visibleLinks.map(l => (
                 <Link key={l.name} href={l.href} className="text-lg font-bold text-white hover:text-yellow-500 transition-colors uppercase tracking-tight">
                   {l.name}
                 </Link>
               ))}
             </div>
 
-            {/* 3. ADMIN PINNED TO BOTTOM */}
             <div className="mt-auto pt-6 border-t border-white/5">
               {isAdmin && (
                 <Link href="/admin" className="flex items-center justify-center gap-3 p-3 bg-blue-500/5 border border-blue-500/10 rounded-xl mb-6 hover:bg-blue-500/10 transition-all">
@@ -114,10 +118,11 @@ export default function Navbar({ variant = 'default', unreadCount = 0 }: { varia
               )}
               {session ? (
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-600 text-[8px] font-black uppercase tracking-widest">Active</p>
-                    <p className="text-white text-s font-bold truncate max-w-[120px]">{session.user?.name}</p>
-                  </div>
+                  {/* UPDATED: Link to Profile */}
+                  <Link href="/profile" className="group">
+                    <p className="text-gray-600 text-[8px] font-black uppercase tracking-widest group-hover:text-yellow-500 transition-colors">Active</p>
+                    <p className="text-white text-s font-bold truncate max-w-[120px] group-hover:text-yellow-500 transition-colors">{session.user?.name}</p>
+                  </Link>
                   <button onClick={() => signOut()} className="text-[14px] font-black p-2 rounded-xl bg-red-700 text-gray-200 hover:text-red-400 hover:bg-red-600 uppercase transition-colors">Sign Out</button>
                 </div>
               ) : (

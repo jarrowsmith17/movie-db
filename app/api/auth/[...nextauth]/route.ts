@@ -5,14 +5,14 @@ import { prisma } from "@/lib/prisma";
 
 /**
  * 1. TYPE AUGMENTATION
- * This tells TypeScript that our 'user' and 'session' objects 
- * officially include 'id' and 'role'.
+ * We add 'username' to the Session type definition so TypeScript knows it exists.
  */
 declare module "next-auth" {
   interface Session {
     user: {
       id: string;
       role?: string;
+      username?: string; // <--- ADDED THIS
     } & DefaultSession["user"]
   }
 
@@ -37,14 +37,12 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.username || !credentials?.password) return null;
 
-        // Find user in Supabase via Prisma
         const user = await prisma.user.findUnique({
           where: { username: credentials.username },
         });
 
         if (!user) return null;
 
-        // Check password hash
         const isPasswordValid = await bcrypt.compare(
           credentials.password,
           user.password
@@ -52,7 +50,6 @@ export const authOptions: NextAuthOptions = {
 
         if (!isPasswordValid) return null;
 
-        // IMPORTANT: Return the id and role here so callbacks can see them
         return {
           id: user.id,
           name: user.name,
@@ -65,33 +62,35 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     /**
      * 3. JWT CALLBACK
-     * Runs when the token is created. We save the id/role into the token.
+     * Persist the username from the User object to the Token.
      */
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
         token.role = user.role;
+        token.username = user.username; // <--- ADDED THIS
       }
       return token;
     },
     /**
      * 4. SESSION CALLBACK
-     * Runs whenever the session is checked. We pass the id/role to the browser.
+     * Pass the username from the Token to the Client Session.
      */
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
         session.user.role = token.role as string;
+        session.user.username = token.username as string; // <--- ADDED THIS
       }
       return session;
     },
   },
   session: {
-    strategy: "jwt", // Use JWT for speed and stateless auth
+    strategy: "jwt",
   },
   secret: process.env.NEXTAUTH_SECRET,
   pages: {
-    signIn: "/login", // Points to your custom login page
+    signIn: "/login",
   },
 };
 

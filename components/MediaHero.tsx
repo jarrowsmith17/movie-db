@@ -3,16 +3,21 @@
 import Link from 'next/link';
 import Navbar from './Navbar';
 import RequestButton from './RequestButton';
+import WatchlistButton from './WatchlistButton'; // Import the new component
+import { useSession } from 'next-auth/react'; // Import session hook
 
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/original';
 
 type MediaHeroProps = {
   media: any;
   type: 'movie' | 'tv';
-  requestStatus?: string | null; // 1. New Prop to receive DB status
+  requestStatus?: string | null;
+  isInWatchlist?: boolean; // New Prop
 };
 
-export default function MediaHero({ media, type, requestStatus }: MediaHeroProps) {
+export default function MediaHero({ media, type, requestStatus, isInWatchlist = false }: MediaHeroProps) {
+  const { data: session } = useSession(); // Check login status
+
   const getRatingColor = (rating: number) => {
     if (!rating) return 'text-gray-400 border-gray-400';
     if (rating >= 7) return 'text-green-400 border-green-400';
@@ -67,16 +72,25 @@ export default function MediaHero({ media, type, requestStatus }: MediaHeroProps
               ))}
             </div>
 
-            {/* 2. PASSING STATUS TO BUTTON */}
-            <div className="ml-0 md:ml-4">
-              <RequestButton 
-                tmdbId={media?.id?.toString() || ""}
-                title={title || ""}
-                posterPath={media?.poster_path || ""}
-                type={type === 'movie' ? 'MOVIE' : 'TV'}
-                status={requestStatus} // Pass it here
-              />
-            </div>
+            {/* ONLY RENDER IF LOGGED IN */}
+            {session && (
+              <div className="ml-0 md:ml-4 flex items-center gap-4">
+                 <WatchlistButton 
+                    tmdbId={media?.id}
+                    title={title}
+                    posterPath={media?.poster_path}
+                    type={type === 'movie' ? 'MOVIE' : 'TV'}
+                    initialState={isInWatchlist}
+                 />
+                 <RequestButton 
+                    tmdbId={media?.id?.toString() || ""}
+                    title={title || ""}
+                    posterPath={media?.poster_path || ""}
+                    type={type === 'movie' ? 'MOVIE' : 'TV'}
+                    status={requestStatus} 
+                 />
+              </div>
+            )}
           </div>
 
           <div className="max-w-3xl">
