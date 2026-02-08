@@ -5,10 +5,10 @@ import MovieCarousel from '@/components/MovieCarousel';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
-// 1. UPDATE FETCH URL: Include 'release_dates'
+// 1. UPDATE FETCH URL: Added 'watch/providers'
 const getMovie = async (id: string) => {
   const res = await fetch(
-    `https://api.themoviedb.org/3/movie/${id}?api_key=${process.env.TMDB_API_KEY}&language=en-GB&append_to_response=videos,credits,recommendations,release_dates`,
+    `https://api.themoviedb.org/3/movie/${id}?api_key=${process.env.TMDB_API_KEY}&language=en-GB&append_to_response=videos,credits,recommendations,release_dates,watch/providers`,
     { next: { revalidate: 3600 } }
   );
   if (!res.ok) throw new Error('Failed to fetch movie');
@@ -29,17 +29,15 @@ export default async function MoviePage({ params }: Props) {
   let isInWatchlist = false;
 
   try {
-    // 1. Check Request Status (Latest)
     existingRequest = await prisma.request.findFirst({
       where: { 
         tmdbId: Number(resolvedParams.id), 
         type: 'MOVIE' 
       },
-      orderBy: { createdAt: 'desc' }, // GET LATEST
+      orderBy: { createdAt: 'desc' },
       select: { status: true }
     });
 
-    // 2. Check Watchlist Status (Only if logged in)
     if (session?.user?.id) {
        const watchlistEntry = await prisma.watchlist.findUnique({
           where: {
@@ -57,12 +55,25 @@ export default async function MoviePage({ params }: Props) {
     console.error("Database connection failed:", error);
   }
 
-  // 2. EXTRACT UK DIGITAL DATE LOGIC
+  // --- UK DATES LOGIC ---
   const ukReleases = movie.release_dates?.results.find((r: any) => r.iso_3166_1 === 'GB');
+  
   const digitalRelease = ukReleases?.release_dates.find((d: any) => d.type === 4);
   const digitalDate = digitalRelease?.release_date 
     ? new Date(digitalRelease.release_date).toLocaleDateString('en-GB') 
     : 'TBA';
+
+  const theatricalRelease = ukReleases?.release_dates.find((d: any) => d.type === 3);
+  const theatricalDate = theatricalRelease?.release_date
+    ? new Date(theatricalRelease.release_date).toLocaleDateString('en-GB')
+    : 'TBA';
+
+  // --- STREAMING (UK) LOGIC ---
+  const ukProviders = movie['watch/providers']?.results?.GB;
+  const streamingList = ukProviders?.flatrate?.map((p: any) => p.provider_name).join(', ')
+                     || ukProviders?.free?.map((p: any) => p.provider_name).join(', ')
+                     || "Not available";
+  // -----------------------------
 
   const trailer = movie.videos?.results.find(
     (vid: any) => vid.type === 'Trailer' && vid.site === 'YouTube'
@@ -98,10 +109,20 @@ export default async function MoviePage({ params }: Props) {
                    <div><span className="block text-gray-500 text-xs uppercase">Budget</span><span className="text-white">{movie.budget > 0 ? `$${movie.budget.toLocaleString()}` : '-'}</span></div>
                    <div><span className="block text-gray-500 text-xs uppercase">Revenue</span><span className="text-white">{movie.revenue > 0 ? `$${movie.revenue.toLocaleString()}` : '-'}</span></div>
                    
-                   {/* 3. DISPLAY DIGITAL RELEASE DATE */}
+                   <div>
+                     <span className="block text-gray-500 text-xs uppercase">Theatrical Release (UK)</span>
+                     <span className="text-white">{theatricalDate}</span>
+                   </div>
+
                    <div>
                      <span className="block text-gray-500 text-xs uppercase">Digital Release (UK)</span>
                      <span className="text-white">{digitalDate}</span>
+                   </div>
+
+                   {/* --- STREAMING SECTION --- */}
+                   <div>
+                     <span className="block text-gray-500 text-xs uppercase">Streaming (UK)</span>
+                     <span className="text-white text-sm leading-relaxed">{streamingList}</span>
                    </div>
                 </div>
              </div>

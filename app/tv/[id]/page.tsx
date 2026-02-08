@@ -7,9 +7,10 @@ import SeasonSelector from '@/components/SeasonSelector';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
+// 1. Fetch URL includes 'watch/providers'
 const getShowDetails = async (id: string) => {
   const res = await fetch(
-    `https://api.themoviedb.org/3/tv/${id}?api_key=${process.env.TMDB_API_KEY}&language=en-GB&append_to_response=videos,credits,recommendations,seasons`,
+    `https://api.themoviedb.org/3/tv/${id}?api_key=${process.env.TMDB_API_KEY}&language=en-GB&append_to_response=videos,credits,recommendations,seasons,watch/providers`,
     { next: { revalidate: 3600 } }
   );
   if (!res.ok) throw new Error('Failed to fetch show');
@@ -42,18 +43,15 @@ export default async function TVPage({ params, searchParams }: Props) {
   let isInWatchlist = false;
 
   try {
-    // 1. Check Request (Latest)
-    // CHANGED: Added orderBy to get the most recent request
     existingRequest = await prisma.request.findFirst({
       where: { 
         tmdbId: Number(resolvedParams.id), 
         type: 'TV' 
       },
-      orderBy: { createdAt: 'desc' }, // GET LATEST
+      orderBy: { createdAt: 'desc' }, 
       select: { status: true }
     });
 
-    // 2. Check Watchlist
     if (session?.user?.id) {
        const watchlistEntry = await prisma.watchlist.findUnique({
           where: {
@@ -69,6 +67,22 @@ export default async function TVPage({ params, searchParams }: Props) {
   } catch (error) {
     console.error("Database check failed:", error);
   }
+
+  // --- DATES ---
+  const firstAired = show.first_air_date 
+    ? new Date(show.first_air_date).toLocaleDateString('en-GB') 
+    : 'TBA';
+
+  const lastAired = show.last_air_date
+    ? new Date(show.last_air_date).toLocaleDateString('en-GB')
+    : 'TBA';
+
+  // --- UK STREAMING LOGIC ---
+  const ukProviders = show['watch/providers']?.results?.GB;
+  const streamingList = ukProviders?.flatrate?.map((p: any) => p.provider_name).join(', ')
+                     || ukProviders?.free?.map((p: any) => p.provider_name).join(', ')
+                     || "Not available";
+  // --------------------------
 
   const seasonToFetch = resolvedSearchParams.season 
     ? parseInt(resolvedSearchParams.season) 
@@ -131,10 +145,28 @@ export default async function TVPage({ params, searchParams }: Props) {
                       <span className="block text-gray-500 text-xs uppercase">Status</span>
                       <span className="text-white">{show.status}</span>
                    </div>
+                   
+                   <div>
+                      <span className="block text-gray-500 text-xs uppercase">First Aired</span>
+                      <span className="text-white">{firstAired}</span>
+                   </div>
+
+                   <div>
+                      <span className="block text-gray-500 text-xs uppercase">Most Recent Episode</span>
+                      <span className="text-white">{lastAired}</span>
+                   </div>
+
                    <div>
                       <span className="block text-gray-500 text-xs uppercase">Network</span>
                       <span className="text-white">{show.networks?.[0]?.name}</span>
                    </div>
+
+                   {/* --- STREAMING SECTION --- */}
+                   <div>
+                      <span className="block text-gray-500 text-xs uppercase">Streaming (UK)</span>
+                      <span className="text-white text-sm leading-relaxed">{streamingList}</span>
+                   </div>
+
                    <div>
                       <span className="block text-gray-500 text-xs uppercase">Type</span>
                       <span className="text-white">{show.type}</span>
