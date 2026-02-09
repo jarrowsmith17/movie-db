@@ -5,10 +5,11 @@ import MovieCarousel from '@/components/MovieCarousel';
 import EpisodeCarousel from '@/components/EpisodeCarousel';
 import SeasonSelector from '@/components/SeasonSelector';
 import ReviewList from '@/components/ReviewList';
-import ExpandableBio from '@/components/ExpandableBio'; // <--- 1. Import this
+import ExpandableBio from '@/components/ExpandableBio';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
+// Fetchers
 const getShowDetails = async (id: string) => {
   const res = await fetch(
     `https://api.themoviedb.org/3/tv/${id}?api_key=${process.env.TMDB_API_KEY}&language=en-GB&append_to_response=videos,credits,recommendations,seasons,watch/providers`,
@@ -35,67 +36,75 @@ type Props = {
 export default async function TVPage({ params, searchParams }: Props) {
   const resolvedParams = await params;
   const resolvedSearchParams = await searchParams;
+  const tvId = Number(resolvedParams.id);
   
-  const show = await getShowDetails(resolvedParams.id);
-  const session = await getServerSession(authOptions);
-  
-  // SAFE DATABASE CHECK
-  let existingRequest = null;
-  let isInWatchlist = false;
-  let userReview = null;
+  // 1. KICK OFF PARALLEL REQUESTS
+  const showPromise = getShowDetails(resolvedParams.id);
+  const sessionPromise = getServerSession(authOptions);
 
-  try {
-    existingRequest = await prisma.request.findFirst({
-      where: { 
-        tmdbId: Number(resolvedParams.id), 
-        type: 'TV' 
-      },
-      orderBy: { createdAt: 'desc' }, 
-      select: { status: true }
-    });
-
-    if (session?.user?.id) {
-       // Check Watchlist
-       const watchlistEntry = await prisma.watchlist.findUnique({
-          where: {
-             userId_tmdbId_type: {
-                userId: session.user.id,
-                tmdbId: Number(resolvedParams.id),
-                type: 'TV'
-             }
-          }
-       });
-       isInWatchlist = !!watchlistEntry;
-
-       // Check User Review
-       userReview = await prisma.review.findUnique({
-          where: {
-             userId_tmdbId_type: {
-                userId: session.user.id,
-                tmdbId: Number(resolvedParams.id),
-                type: 'TV'
-             }
-          },
-          select: { rating: true, content: true }
-       });
-    }
-  } catch (error) {
-    console.error("Database check failed:", error);
-  }
-
-  // Fetch All Reviews
-  const allReviews = await prisma.review.findMany({
-     where: {
-        tmdbId: Number(resolvedParams.id),
-        type: 'TV'
-     },
-     include: {
-        user: { select: { username: true, name: true } }
-     },
+  const allReviewsPromise = prisma.review.findMany({
+     where: { tmdbId: tvId, type: 'TV' },
+     include: { user: { select: { username: true, name: true } } },
      orderBy: { createdAt: 'desc' }
   });
 
-  // --- DATES ---
+  const requestPromise = prisma.request.findFirst({
+    where: { tmdbId: tvId, type: 'TV' },
+    orderBy: { createdAt: 'desc' }, 
+    select: { status: true }
+  });
+
+  // 2. Await Session to determine user-specific fetches
+  const session = await sessionPromise;
+
+  let watchlistPromise = Promise.resolve(null);
+  let userReviewPromise = Promise.resolve(null);
+
+  if (session?.user?.id) {
+    watchlistPromise = prisma.watchlist.findUnique({
+       where: {
+         userId_tmdbId_type: {
+            userId: session.user.id,
+            tmdbId: tvId,
+            type: 'TV'
+         }
+       }
+    }) as any;
+
+    userReviewPromise = prisma.review.findUnique({
+       where: {
+         userId_tmdbId_type: {
+            userId: session.user.id,
+            tmdbId: tvId,
+            type: 'TV'
+         }
+       },
+       select: { rating: true, content: true }
+    }) as any;
+  }
+
+  // 3. AWAIT EVERYTHING
+  const [show, allReviews, existingRequest, watchlistEntry, userReview] = await Promise.all([
+    showPromise,
+    allReviewsPromise,
+    requestPromise,
+    watchlistPromise,
+    userReviewPromise
+  ]);
+
+  // 4. FETCH SEASON DATA (Dependent on 'show' or 'searchParams')
+  // If we have a param, use it. If not, use the show's first season number.
+  const seasonToFetch = resolvedSearchParams.season 
+    ? parseInt(resolvedSearchParams.season) 
+    : (show.seasons?.[0]?.season_number || 1);
+
+  const seasonData = await getSeasonDetails(resolvedParams.id, seasonToFetch);
+
+  // 5. PARSE DATA
+  const isInWatchlist = !!watchlistEntry;
+  const castToDisplay = seasonData?.credits?.cast || show.credits?.cast;
+
+  // Dates
   const firstAired = show.first_air_date 
     ? new Date(show.first_air_date).toLocaleDateString('en-GB') 
     : 'TBA';
@@ -104,19 +113,11 @@ export default async function TVPage({ params, searchParams }: Props) {
     ? new Date(show.last_air_date).toLocaleDateString('en-GB')
     : 'TBA';
 
-  // --- UK STREAMING LOGIC ---
+  // Streaming (UK)
   const ukProviders = show['watch/providers']?.results?.GB;
   const streamingList = ukProviders?.flatrate?.map((p: any) => p.provider_name).join(', ')
-                     || ukProviders?.free?.map((p: any) => p.provider_name).join(', ')
-                     || "Not available";
-  // --------------------------
-
-  const seasonToFetch = resolvedSearchParams.season 
-    ? parseInt(resolvedSearchParams.season) 
-    : (show.seasons?.[0]?.season_number || 1);
-
-  const seasonData = await getSeasonDetails(resolvedParams.id, seasonToFetch);
-  const castToDisplay = seasonData?.credits?.cast || show.credits?.cast;
+                      || ukProviders?.free?.map((p: any) => p.provider_name).join(', ')
+                      || "Not available";
 
   const trailer = show.videos?.results.find(
     (vid: any) => vid.type === 'Trailer' && vid.site === 'YouTube'

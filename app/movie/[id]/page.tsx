@@ -3,10 +3,11 @@ import MediaHero from '@/components/MediaHero';
 import CastCarousel from '@/components/CastCarousel';
 import MovieCarousel from '@/components/MovieCarousel';
 import ReviewList from '@/components/ReviewList'; 
-import ExpandableBio from '@/components/ExpandableBio'; // <--- 1. Import this
+import ExpandableBio from '@/components/ExpandableBio';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
+// Fetcher for TMDB
 const getMovie = async (id: string) => {
   const res = await fetch(
     `https://api.themoviedb.org/3/movie/${id}?api_key=${process.env.TMDB_API_KEY}&language=en-GB&append_to_response=videos,credits,recommendations,release_dates,watch/providers`,
@@ -22,65 +23,70 @@ type Props = {
 
 export default async function MoviePage({ params }: Props) {
   const resolvedParams = await params;
-  const movie = await getMovie(resolvedParams.id);
-  const session = await getServerSession(authOptions);
+  const movieId = Number(resolvedParams.id);
 
-  // SAFE DATABASE CHECK
-  let existingRequest = null;
-  let isInWatchlist = false;
-  let userReview = null;
-
-  try {
-    existingRequest = await prisma.request.findFirst({
-      where: { 
-        tmdbId: Number(resolvedParams.id), 
-        type: 'MOVIE' 
-      },
-      orderBy: { createdAt: 'desc' },
-      select: { status: true }
-    });
-
-    if (session?.user?.id) {
-       // Check Watchlist
-       const watchlistEntry = await prisma.watchlist.findUnique({
-          where: {
-             userId_tmdbId_type: {
-                userId: session.user.id,
-                tmdbId: Number(resolvedParams.id),
-                type: 'MOVIE'
-             }
-          }
-       });
-       isInWatchlist = !!watchlistEntry;
-
-       // Check User Review
-       userReview = await prisma.review.findUnique({
-          where: {
-             userId_tmdbId_type: {
-                userId: session.user.id,
-                tmdbId: Number(resolvedParams.id),
-                type: 'MOVIE'
-             }
-          },
-          select: { rating: true, content: true }
-       });
-    }
-
-  } catch (error) {
-    console.error("Database connection failed:", error);
-  }
-
-  // Fetch ALL reviews for this movie
-  const allReviews = await prisma.review.findMany({
-     where: {
-        tmdbId: Number(resolvedParams.id),
-        type: 'MOVIE'
-     },
-     include: {
-        user: { select: { username: true, name: true } }
-     },
+  // 1. START FETCHING EVERYTHING INSTANTLY (PARALLEL)
+  // We don't await anything yet. We just kick off the requests.
+  
+  const moviePromise = getMovie(resolvedParams.id);
+  
+  const sessionPromise = getServerSession(authOptions);
+  
+  const allReviewsPromise = prisma.review.findMany({
+     where: { tmdbId: movieId, type: 'MOVIE' },
+     include: { user: { select: { username: true, name: true } } },
      orderBy: { createdAt: 'desc' }
   });
+
+  const requestPromise = prisma.request.findFirst({
+    where: { tmdbId: movieId, type: 'MOVIE' },
+    orderBy: { createdAt: 'desc' },
+    select: { status: true }
+  });
+
+  // 2. Await Session first (it's fast) so we know if we need to fetch user-specific data
+  const session = await sessionPromise;
+
+  // 3. Conditionally fetch user-specific data (Watchlist/UserReview)
+  // We use Promise.resolve(null) so the variable always holds a promise we can await later
+  let watchlistPromise = Promise.resolve(null);
+  let userReviewPromise = Promise.resolve(null);
+
+  if (session?.user?.id) {
+     watchlistPromise = prisma.watchlist.findUnique({
+       where: {
+         userId_tmdbId_type: {
+           userId: session.user.id,
+           tmdbId: movieId,
+           type: 'MOVIE'
+         }
+       }
+     }) as any;
+
+     userReviewPromise = prisma.review.findUnique({
+       where: {
+         userId_tmdbId_type: {
+            userId: session.user.id,
+            tmdbId: movieId,
+            type: 'MOVIE'
+         }
+       },
+       select: { rating: true, content: true }
+     }) as any;
+  }
+
+  // 4. AWAIT EVERYTHING AT ONCE
+  // This is the magic step. The total wait time is just the slowest single request.
+  const [movie, allReviews, existingRequest, watchlistEntry, userReview] = await Promise.all([
+    moviePromise,
+    allReviewsPromise,
+    requestPromise,
+    watchlistPromise,
+    userReviewPromise
+  ]);
+
+  // 5. Logic & Parsing (Instant)
+  const isInWatchlist = !!watchlistEntry;
 
   // --- UK DATES LOGIC ---
   const ukReleases = movie.release_dates?.results.find((r: any) => r.iso_3166_1 === 'GB');
@@ -98,9 +104,8 @@ export default async function MoviePage({ params }: Props) {
   // --- STREAMING (UK) LOGIC ---
   const ukProviders = movie['watch/providers']?.results?.GB;
   const streamingList = ukProviders?.flatrate?.map((p: any) => p.provider_name).join(', ')
-                     || ukProviders?.free?.map((p: any) => p.provider_name).join(', ')
-                     || "Not available";
-  // -----------------------------
+                      || ukProviders?.free?.map((p: any) => p.provider_name).join(', ')
+                      || "Not available";
 
   const trailer = movie.videos?.results.find(
     (vid: any) => vid.type === 'Trailer' && vid.site === 'YouTube'
