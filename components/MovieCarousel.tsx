@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRef } from 'react';
 
-const IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500";
+const IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w342";
 
 type Props = {
   movies: any[]; // Now accepts Movies or TV Shows
