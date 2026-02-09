@@ -2,7 +2,8 @@ import { prisma } from '@/lib/prisma';
 import MediaHero from '@/components/MediaHero';
 import CastCarousel from '@/components/CastCarousel';
 import MovieCarousel from '@/components/MovieCarousel';
-import ReviewList from '@/components/ReviewList'; // New Import
+import ReviewList from '@/components/ReviewList'; 
+import ExpandableBio from '@/components/ExpandableBio'; // <--- 1. Import this
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
@@ -112,12 +113,21 @@ export default async function MoviePage({ params }: Props) {
         type="movie" 
         requestStatus={existingRequest?.status} 
         isInWatchlist={isInWatchlist} 
-        userReview={userReview} // Pass the review data
+        userReview={userReview}
       />
       
       <div className="max-w-7xl mx-auto px-4 md:px-10 mt-12">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+          
           <div className="md:col-span-2 space-y-12">
+             
+             {/* --- NEW PLOT SECTION --- */}
+             <section>
+                <h2 className="text-2xl font-bold mb-4 border-l-4 border-yellow-500 pl-4">Overview</h2>
+                <ExpandableBio bio={movie.overview || "No plot overview available."} />
+             </section>
+             {/* ------------------------ */}
+
              {trailer && (
                 <section>
                    <h2 className="text-2xl font-bold mb-6 border-l-4 border-yellow-500 pl-4">Official Trailer</h2>
@@ -128,6 +138,7 @@ export default async function MoviePage({ params }: Props) {
              )}
              <CastCarousel cast={movie.credits?.cast} />
           </div>
+
           <div className="space-y-8">
              <div className="bg-gray-900 p-6 rounded-xl border border-gray-800">
                 <h3 className="text-gray-400 text-sm uppercase tracking-wider mb-4 font-bold text-white">Details</h3>
@@ -135,27 +146,14 @@ export default async function MoviePage({ params }: Props) {
                    <div><span className="block text-gray-500 text-xs uppercase">Status</span><span className="text-white">{movie.status}</span></div>
                    <div><span className="block text-gray-500 text-xs uppercase">Budget</span><span className="text-white">{movie.budget > 0 ? `$${movie.budget.toLocaleString()}` : '-'}</span></div>
                    <div><span className="block text-gray-500 text-xs uppercase">Revenue</span><span className="text-white">{movie.revenue > 0 ? `$${movie.revenue.toLocaleString()}` : '-'}</span></div>
-                   
-                   <div>
-                     <span className="block text-gray-500 text-xs uppercase">Theatrical Release (UK)</span>
-                     <span className="text-white">{theatricalDate}</span>
-                   </div>
-
-                   <div>
-                     <span className="block text-gray-500 text-xs uppercase">Digital Release (UK)</span>
-                     <span className="text-white">{digitalDate}</span>
-                   </div>
-
-                   <div>
-                     <span className="block text-gray-500 text-xs uppercase">Streaming (UK)</span>
-                     <span className="text-white text-sm leading-relaxed">{streamingList}</span>
-                   </div>
+                   <div><span className="block text-gray-500 text-xs uppercase">Theatrical Release (UK)</span><span className="text-white">{theatricalDate}</span></div>
+                   <div><span className="block text-gray-500 text-xs uppercase">Digital Release (UK)</span><span className="text-white">{digitalDate}</span></div>
+                   <div><span className="block text-gray-500 text-xs uppercase">Streaming (UK)</span><span className="text-white text-sm leading-relaxed">{streamingList}</span></div>
                 </div>
              </div>
           </div>
         </div>
 
-        {/* Display Reviews */}
         <ReviewList reviews={allReviews} />
 
         {movie.recommendations?.results.length > 0 && (

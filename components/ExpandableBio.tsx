@@ -1,25 +1,52 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 export default function ExpandableBio({ bio }: { bio: string }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isTruncated, setIsTruncated] = useState(false);
+  const textRef = useRef<HTMLParagraphElement>(null);
 
-  if (!bio) return <p className="text-gray-500 text-sm">No biography available.</p>;
+  useEffect(() => {
+    const checkTruncation = () => {
+      if (!textRef.current) return;
+      
+      // We only measure truncation when the text is collapsed.
+      // (When expanded, scrollHeight equals clientHeight, so we can't detect overflow).
+      if (!isExpanded) {
+        // If scrollHeight > clientHeight, it means lines are being hidden
+        setIsTruncated(textRef.current.scrollHeight > textRef.current.clientHeight);
+      }
+    };
+
+    // Run initial check
+    checkTruncation();
+
+    // Re-check on resize (handles phone rotation etc.)
+    window.addEventListener('resize', checkTruncation);
+    return () => window.removeEventListener('resize', checkTruncation);
+  }, [bio, isExpanded]);
 
   return (
-    <div className="max-w-3xl">
-      <p className={`text-gray-300 leading-relaxed text-sm md:text-base ${!isExpanded ? 'line-clamp-6 md:line-clamp-none' : ''}`}>
+    <div className="relative">
+      <p 
+        ref={textRef}
+        className={`text-gray-300 leading-relaxed text-lg transition-all ${
+          isExpanded ? '' : 'line-clamp-3 md:line-clamp-none'
+        }`}
+      >
         {bio}
       </p>
       
-      {/* Toggle button: Only visible on mobile (hidden on md screens) */}
-      <button 
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="md:hidden mt-2 text-yellow-500 text-xs font-black uppercase tracking-widest hover:text-white transition-colors"
-      >
-        {isExpanded ? 'Show Less' : 'Show More'}
-      </button>
+      {/* Only render button if truncation was detected */}
+      {isTruncated && (
+        <button 
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="mt-2 text-yellow-500 text-sm font-bold uppercase tracking-widest hover:underline md:hidden"
+        >
+          {isExpanded ? 'Show Less' : 'Show More'}
+        </button>
+      )}
     </div>
   );
 }

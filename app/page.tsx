@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import MovieCarousel from '@/components/MovieCarousel';
+import RecommendedForYou from '@/components/RecommendedForYou'; // <--- 1. Import new component
 
 export const dynamic = 'force-dynamic';
 
@@ -96,6 +97,9 @@ export default async function Home({ searchParams }: Props) {
 
       <div className="w-full max-w-7xl mx-auto px-4 md:px-10 flex flex-col gap-12">
         
+        {/* SECTION 0: RECOMMENDED (Only shows if logged in) */}
+        <RecommendedForYou />
+
         {/* SECTION 1: TRENDING */}
         <section>
           <div className="flex items-center gap-4 mb-4">

@@ -25,7 +25,7 @@ export default function MediaHero({
   type, 
   requestStatus, 
   isInWatchlist = false, 
-  userReview 
+  userReview
 }: MediaHeroProps) {
   const { data: session } = useSession();
 
@@ -58,7 +58,7 @@ export default function MediaHero({
       <div className="relative z-10 grid grid-rows-[1fr_auto] h-full max-w-7xl mx-auto px-4 md:px-10 pb-12">
         <div className="pointer-events-none" />
 
-        <div className="flex flex-col gap-4 max-w-full">
+        <div className="flex flex-col gap-4">
           <h1 className="text-3xl md:text-6xl font-black italic uppercase tracking-tighter drop-shadow-2xl leading-tight text-white break-words">
             {title} 
             <span className="text-xl md:text-4xl text-gray-400 font-normal ml-0 md:ml-3 block md:inline not-italic tracking-normal">
@@ -83,49 +83,13 @@ export default function MediaHero({
               ))}
             </div>
 
-            {/* ACTION BUTTONS: Added flex-wrap to prevent overflow */}
-            {session && (
-              <div className="w-full md:w-auto flex flex-wrap items-center gap-3 mt-4 md:mt-0 md:ml-4">
-                 <WatchlistButton 
-                    tmdbId={media?.id}
-                    title={title}
-                    posterPath={media?.poster_path}
-                    type={type === 'movie' ? 'MOVIE' : 'TV'}
-                    initialState={isInWatchlist}
-                 />
-                 
-                 <ReviewButton 
-                    tmdbId={media?.id}
-                    title={title}
-                    posterPath={media?.poster_path}
-                    type={type === 'movie' ? 'MOVIE' : 'TV'}
-                    initialRating={userReview?.rating}
-                    initialReview={userReview?.content}
-                 />
-
-                 <RequestButton 
-                    tmdbId={media?.id?.toString() || ""}
-                    title={title || ""}
-                    posterPath={media?.poster_path || ""}
-                    type={type === 'movie' ? 'MOVIE' : 'TV'}
-                    status={requestStatus} 
-                 />
-              </div>
-            )}
-          </div>
-
-          <div className="max-w-3xl">
+            <div className="max-w-3xl">
             {media?.tagline && (
               <p className="text-yellow-500 italic text-sm md:text-lg mb-2 drop-shadow-md border-l-2 border-yellow-500 pl-3 break-words">
                 "{media.tagline}"
               </p>
             )}
             
-            <h3 className="text-lg md:text-xl font-black uppercase italic tracking-tight mb-1 text-white mt-4">Overview</h3>
-            <p className="text-gray-200 leading-relaxed text-sm md:text-lg line-clamp-3 md:line-clamp-none drop-shadow-md font-medium">
-              {media?.overview || "No overview available."}
-            </p>
-
             {(director || creator) && (
               <p className="mt-4 text-sm text-gray-400 uppercase font-bold tracking-widest">
                 <span className="text-white">{type === 'movie' ? 'Director' : 'Created By'}:</span>{' '}
@@ -138,6 +102,37 @@ export default function MediaHero({
               </p>
             )}
           </div>
+
+            {/* ACTION BUTTONS: RESTORED FIX */}
+            {session && (
+              <div className="w-full md:w-auto flex flex-wrap items-center gap-3 mt-4 md:mt-0 md:ml-4">
+                 <WatchlistButton 
+                    tmdbId={media?.id}
+                    title={title}
+                    posterPath={media?.poster_path}
+                    type={type === 'movie' ? 'MOVIE' : 'TV'}
+                    initialState={isInWatchlist}
+                 />
+                 <ReviewButton 
+                    tmdbId={media?.id}
+                    title={title}
+                    posterPath={media?.poster_path}
+                    type={type === 'movie' ? 'MOVIE' : 'TV'}
+                    initialRating={userReview?.rating}
+                    initialReview={userReview?.content}
+                  />
+                 <RequestButton 
+                    tmdbId={media?.id?.toString() || ""}
+                    title={title || ""}
+                    posterPath={media?.poster_path || ""}
+                    type={type === 'movie' ? 'MOVIE' : 'TV'}
+                    status={requestStatus} 
+                 />
+              </div>
+            )}
+          </div>
+
+          
         </div>
       </div>
     </div>

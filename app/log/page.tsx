@@ -4,7 +4,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
-import DeleteLogButton from "@/components/DeleteLogButton"; // <--- Import this
+import DeleteLogButton from "@/components/DeleteLogButton";
 
 const IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500";
 
@@ -25,13 +25,20 @@ export default async function LogPage() {
     },
   });
 
+  // Calculate Unique Count
+  // We create a unique string key for each item (ID + Type) and put them in a Set
+  const uniqueCount = new Set(logs.map((log) => `${log.tmdbId}-${log.type}`)).size;
+
   return (
     <div className="min-h-screen bg-gray-950 text-white pb-20">
       <Navbar />
       
       <div className="max-w-7xl mx-auto px-4 md:px-10 mt-10">
-        <h1 className="text-3xl md:text-5xl font-black italic uppercase tracking-tighter mb-8">
+        <h1 className="text-3xl md:text-5xl font-black italic uppercase tracking-tighter mb-8 flex items-baseline gap-4">
           Watch History
+          <span className="text-xl md:text-3xl text-gray-500 font-bold not-italic tracking-normal">
+            ({uniqueCount})
+          </span>
         </h1>
 
         {logs.length === 0 ? (
@@ -46,7 +53,7 @@ export default async function LogPage() {
             {logs.map((log) => (
               <div key={log.id} className="group relative">
                 
-                {/* Delete Button (New) */}
+                {/* Delete Button */}
                 <DeleteLogButton logId={log.id} />
 
                 {/* Date Badge */}

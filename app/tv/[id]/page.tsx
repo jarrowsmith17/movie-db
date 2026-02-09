@@ -4,11 +4,11 @@ import CastCarousel from '@/components/CastCarousel';
 import MovieCarousel from '@/components/MovieCarousel';
 import EpisodeCarousel from '@/components/EpisodeCarousel';
 import SeasonSelector from '@/components/SeasonSelector';
-import ReviewList from '@/components/ReviewList'; // 1. Import ReviewList
+import ReviewList from '@/components/ReviewList';
+import ExpandableBio from '@/components/ExpandableBio'; // <--- 1. Import this
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
-// 1. Fetch URL includes 'watch/providers'
 const getShowDetails = async (id: string) => {
   const res = await fetch(
     `https://api.themoviedb.org/3/tv/${id}?api_key=${process.env.TMDB_API_KEY}&language=en-GB&append_to_response=videos,credits,recommendations,seasons,watch/providers`,
@@ -42,7 +42,7 @@ export default async function TVPage({ params, searchParams }: Props) {
   // SAFE DATABASE CHECK
   let existingRequest = null;
   let isInWatchlist = false;
-  let userReview = null; // 2. Initialize userReview
+  let userReview = null;
 
   try {
     existingRequest = await prisma.request.findFirst({
@@ -67,7 +67,7 @@ export default async function TVPage({ params, searchParams }: Props) {
        });
        isInWatchlist = !!watchlistEntry;
 
-       // 3. Fetch User Review (for the button state)
+       // Check User Review
        userReview = await prisma.review.findUnique({
           where: {
              userId_tmdbId_type: {
@@ -83,7 +83,7 @@ export default async function TVPage({ params, searchParams }: Props) {
     console.error("Database check failed:", error);
   }
 
-  // 4. Fetch All Reviews (for the list)
+  // Fetch All Reviews
   const allReviews = await prisma.review.findMany({
      where: {
         tmdbId: Number(resolvedParams.id),
@@ -129,13 +129,21 @@ export default async function TVPage({ params, searchParams }: Props) {
         type="tv" 
         requestStatus={existingRequest?.status} 
         isInWatchlist={isInWatchlist} 
-        userReview={userReview} // 5. Pass review to Hero
+        userReview={userReview}
       />
 
       <div className="max-w-7xl mx-auto px-4 md:px-10 mt-12">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
           
           <div className="md:col-span-2 space-y-12">
+            
+            {/* --- NEW OVERVIEW SECTION --- */}
+            <section>
+               <h2 className="text-2xl font-bold mb-4 border-l-4 border-yellow-500 pl-4">Overview</h2>
+               <ExpandableBio bio={show.overview || "No overview available."} />
+            </section>
+            {/* --------------------------- */}
+
             {trailer && (
               <section>
                 <h2 className="text-2xl font-bold mb-6 border-l-4 border-yellow-500 pl-4">Official Trailer</h2>
@@ -169,42 +177,17 @@ export default async function TVPage({ params, searchParams }: Props) {
              <div className="bg-gray-900 p-6 rounded-xl border border-gray-800">
                 <h3 className="text-gray-400 text-sm uppercase tracking-wider mb-4 font-bold text-white">Show Info</h3>
                 <div className="space-y-4">
-                   <div>
-                      <span className="block text-gray-500 text-xs uppercase">Status</span>
-                      <span className="text-white">{show.status}</span>
-                   </div>
-                   
-                   <div>
-                      <span className="block text-gray-500 text-xs uppercase">First Aired</span>
-                      <span className="text-white">{firstAired}</span>
-                   </div>
-
-                   <div>
-                      <span className="block text-gray-500 text-xs uppercase">Most Recent Episode</span>
-                      <span className="text-white">{lastAired}</span>
-                   </div>
-
-                   <div>
-                      <span className="block text-gray-500 text-xs uppercase">Network</span>
-                      <span className="text-white">{show.networks?.[0]?.name}</span>
-                   </div>
-
-                   {/* --- STREAMING SECTION --- */}
-                   <div>
-                      <span className="block text-gray-500 text-xs uppercase">Streaming (UK)</span>
-                      <span className="text-white text-sm leading-relaxed">{streamingList}</span>
-                   </div>
-
-                   <div>
-                      <span className="block text-gray-500 text-xs uppercase">Type</span>
-                      <span className="text-white">{show.type}</span>
-                   </div>
+                   <div><span className="block text-gray-500 text-xs uppercase">Status</span><span className="text-white">{show.status}</span></div>
+                   <div><span className="block text-gray-500 text-xs uppercase">First Aired</span><span className="text-white">{firstAired}</span></div>
+                   <div><span className="block text-gray-500 text-xs uppercase">Most Recent Episode</span><span className="text-white">{lastAired}</span></div>
+                   <div><span className="block text-gray-500 text-xs uppercase">Network</span><span className="text-white">{show.networks?.[0]?.name}</span></div>
+                   <div><span className="block text-gray-500 text-xs uppercase">Streaming (UK)</span><span className="text-white text-sm leading-relaxed">{streamingList}</span></div>
+                   <div><span className="block text-gray-500 text-xs uppercase">Type</span><span className="text-white">{show.type}</span></div>
                 </div>
              </div>
           </div>
         </div>
 
-        {/* 6. Display the Review List */}
         <ReviewList reviews={allReviews} />
 
         {show.recommendations?.results.length > 0 && (
