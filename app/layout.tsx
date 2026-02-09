@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next"
+import NextTopLoader from 'nextjs-toploader';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,6 +37,15 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <NextTopLoader 
+          color="#EAB308" 
+          initialPosition={0.08} 
+          crawlSpeed={200} 
+          height={3} 
+          showSpinner={false} 
+          easing="ease" 
+          speed={200} 
+        />
         <SessionWrapper>
           {children}
         </SessionWrapper>
