@@ -49,7 +49,7 @@ export default function Navbar({ variant = 'default', unreadCount = 0 }: { varia
     { name: 'Log', href: '/log', protected: true },
     { name: 'Watchlist', href: '/watchlist', protected: true },
     { name: 'Requests', href: '/requests', protected: true },
-    { name: 'Inbox', href: '/inbox', protected: true },
+    { name: 'FAQ', href: '/faq', protected: false },
   ]
 
   const visibleLinks = allLinks.filter(link => 
