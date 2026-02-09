@@ -3,7 +3,6 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import MovieCarousel from "./MovieCarousel";
 
-// Helper to shuffle an array
 function shuffleArray(array: any[]) {
   for (let i = array.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -17,7 +16,7 @@ export default async function RecommendedForYou() {
 
   if (!session?.user?.id) return null;
 
-  // 1. Fetch ALL watched movie IDs for filtering (so we don't recommend seen films)
+  // 1. Fetch ALL watched movie IDs
   const allWatched = await prisma.watchLog.findMany({
     where: {
       userId: session.user.id,
@@ -34,21 +33,37 @@ export default async function RecommendedForYou() {
 
   if (allWatched.length === 0) return null;
 
-  // 2. Pick Source Movies from recent history 
-  // (We use a pool of the last 50 to mix recent favorites with random rediscovery)
-  const recentPool = allWatched.slice(0, 50);
-  
-  const recent = recentPool.slice(0, 2); // Top 2 most recent
-  const others = recentPool.slice(2);
-  const shuffledOthers = shuffleArray([...others]).slice(0, 3); // 3 random others
-  
-  const sourceMovies = [...recent, ...shuffledOthers];
+  // 2. Fetch "High Rated" movies (4 or 5 stars)
+  const highRatedReviews = await prisma.review.findMany({
+    where: {
+      userId: session.user.id,
+      type: "MOVIE",
+      rating: { gte: 4 },
+    },
+    select: {
+      tmdbId: true,
+    },
+  });
 
-  // 3. Fetch Recommendations from TMDB in Parallel
-  const promises = sourceMovies.map(async (log) => {
+  // --- SMART SOURCE SELECTION ---
+  const recentSource = allWatched.slice(0, 2).map(log => log.tmdbId);
+  const ratedSource = shuffleArray(highRatedReviews.map(r => r.tmdbId)).slice(0, 3);
+  let sourceIds = [...recentSource, ...ratedSource];
+
+  if (sourceIds.length < 5) {
+    const needed = 5 - sourceIds.length;
+    const historyPool = allWatched.slice(2).map(log => log.tmdbId);
+    const randomHistory = shuffleArray(historyPool).slice(0, needed);
+    sourceIds = [...sourceIds, ...randomHistory];
+  }
+
+  sourceIds = Array.from(new Set(sourceIds));
+
+  // 3. Fetch Recommendations
+  const promises = sourceIds.map(async (tmdbId) => {
     try {
       const res = await fetch(
-        `https://api.themoviedb.org/3/movie/${log.tmdbId}/recommendations?api_key=${process.env.TMDB_API_KEY}&language=en-GB&page=1`,
+        `https://api.themoviedb.org/3/movie/${tmdbId}/recommendations?api_key=${process.env.TMDB_API_KEY}&language=en-GB&page=1`,
         { next: { revalidate: 3600 } }
       );
       const data = await res.json();
@@ -61,7 +76,7 @@ export default async function RecommendedForYou() {
   const rawResults = await Promise.all(promises);
   const allRecs = rawResults.flat();
 
-  // 4. Ranking Algorithm (Count occurrences)
+  // 4. Rank
   const movieScores = new Map<number, { count: number; movie: any }>();
 
   allRecs.forEach((movie: any) => {
@@ -74,15 +89,14 @@ export default async function RecommendedForYou() {
     }
   });
 
-  // 5. FILTERING
-  // Create a Set of IDs the user has ALREADY watched to block them
+  // 5. Filter & Sort
   const watchedIds = new Set(allWatched.map((h) => h.tmdbId));
 
   const finalSelection = Array.from(movieScores.values())
-    .filter((item) => !watchedIds.has(item.movie.id)) // <--- CRITICAL: Filter out seen films
+    .filter((item) => !watchedIds.has(item.movie.id))
     .sort((a, b) => {
-      if (b.count !== a.count) return b.count - a.count; // Prioritize overlap
-      return b.movie.vote_average - a.movie.vote_average; // Then rating
+      if (b.count !== a.count) return b.count - a.count; 
+      return b.movie.vote_average - a.movie.vote_average;
     })
     .map((item) => item.movie)
     .slice(0, 20);
@@ -90,11 +104,12 @@ export default async function RecommendedForYou() {
   if (finalSelection.length === 0) return null;
 
   return (
+    // REMOVED 'mb-12' -> Now relies on parent gap-10
     <section>
-      <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
+      <h2 className="text-2xl font-bold text-white mb-6 px-4 md:px-10 flex items-center gap-3">
         Recommended For You
         <span className="text-[10px] font-bold text-yellow-500 uppercase tracking-widest border border-yellow-500/30 bg-yellow-500/10 px-2 py-0.5 rounded">
-          For You
+          Based on your favorites
         </span>
       </h2>
       <MovieCarousel movies={finalSelection} />

@@ -6,7 +6,12 @@ import Link from 'next/link';
 
 const IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w92";
 
-export default function Search() {
+// Define the props interface to accept the close callback
+interface SearchProps {
+  onSearch?: () => void;
+}
+
+export default function Search({ onSearch }: SearchProps) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -27,6 +32,10 @@ export default function Search() {
     if (e) e.preventDefault();
     if (query.trim()) {
       setIsOpen(false);
+      
+      // FIX: Trigger the callback to close the mobile menu
+      if (onSearch) onSearch();
+
       // Default to 'movie' for new searches from the bar
       router.push(`/search?q=${encodeURIComponent(query)}&type=movie`);
       setQuery('');
@@ -40,13 +49,17 @@ export default function Search() {
         return;
       }
       // Quick preview uses Multi-search for variety
-      const res = await fetch(
-        `https://api.themoviedb.org/3/search/multi?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&language=en-GB&query=${query}&include_adult=false`
-      );
-      const data = await res.json();
-      const filtered = data.results?.filter((item: any) => item.media_type !== 'person').slice(0, 6);
-      setResults(filtered || []);
-      setIsOpen(true);
+      try {
+        const res = await fetch(
+          `https://api.themoviedb.org/3/search/multi?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&language=en-GB&query=${query}&include_adult=false`
+        );
+        const data = await res.json();
+        const filtered = data.results?.filter((item: any) => item.media_type !== 'person').slice(0, 6);
+        setResults(filtered || []);
+        setIsOpen(true);
+      } catch (error) {
+        console.error("Search preview failed", error);
+      }
     };
 
     const timer = setTimeout(fetchResults, 300);
@@ -61,7 +74,8 @@ export default function Search() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search for movies or shows..."
-          className="w-full bg-gray-900/80 border border-gray-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:border-yellow-500 text-sm"
+          // FIX: text-[16px] prevents iOS zoom on focus, md:text-sm is for desktop
+          className="w-full bg-gray-900/80 border border-gray-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:border-yellow-500 text-[16px] md:text-sm"
         />
         <button type="submit" className="bg-yellow-500 hover:bg-yellow-400 text-black px-4 rounded-lg font-bold transition-colors">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
@@ -77,7 +91,16 @@ export default function Search() {
             const title = item.title || item.name;
             const href = isTV ? `/tv/${item.id}` : `/movie/${item.id}`;
             return (
-              <Link key={item.id} href={href} onClick={() => setIsOpen(false)} className="flex items-center gap-4 px-4 py-3 hover:bg-gray-800 border-b border-gray-800/50 last:border-0">
+              <Link 
+                key={item.id} 
+                href={href} 
+                onClick={() => {
+                  setIsOpen(false);
+                  // FIX: Trigger the callback when clicking a result
+                  if (onSearch) onSearch();
+                }} 
+                className="flex items-center gap-4 px-4 py-3 hover:bg-gray-800 border-b border-gray-800/50 last:border-0"
+              >
                 <div className="w-8 h-12 bg-gray-800 rounded overflow-hidden shrink-0">
                   {item.poster_path && <img src={IMAGE_BASE_URL + item.poster_path} alt="" className="w-full h-full object-cover" />}
                 </div>
